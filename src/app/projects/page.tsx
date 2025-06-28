@@ -4,6 +4,7 @@ import { AuthHeader } from "@/components/common/AuthHeader"
 import { Button } from "@/components/ui/button"
 import { useRequireAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { getProjects, createProject, updateProject, deleteProject, getProjectCount } from "@/lib/database"
 import { Project, CreateProjectData, UpdateProjectData } from "@/types"
 import { Plus, AlertCircle } from "lucide-react"
@@ -13,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function ProjectsPage() {
   const { user, loading } = useRequireAuth()
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [projectCount, setProjectCount] = useState<number>(0)
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
@@ -137,8 +139,7 @@ export default function ProjectsPage() {
   }
 
   const handleProjectView = (projectId: string) => {
-    // TODO: Navigate to project detail page
-    console.log('View project:', projectId)
+    router.push(`/projects/${projectId}`)
   }
 
   const handleProjectEdit = (project: Project) => {
