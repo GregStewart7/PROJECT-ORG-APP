@@ -3,14 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { ArrowLeft, Calendar, Clock, Edit, Trash2, FolderOpen, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Edit, Trash2, FolderOpen, Plus, CheckCircle, AlertCircle } from 'lucide-react'
 
 import { AuthHeader } from "@/components/common/AuthHeader"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { TaskCard } from "@/components/task/TaskCard"
+import { TaskForm } from "@/components/task/TaskForm"
 import { useRequireAuth } from "@/contexts/AuthContext"
-import { getProject, deleteProject } from "@/lib/database"
-import { Project } from "@/types"
+import { 
+  getProject, 
+  deleteProject, 
+  getTasksByProject,
+  createTask,
+  updateTask,
+  deleteTask,
+  toggleTaskCompletion
+} from "@/lib/database"
+import { Project, Task, CreateTaskData, UpdateTaskData, ApiResponse } from "@/types"
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -18,9 +28,16 @@ export default function ProjectDetailPage() {
   const { user, loading } = useRequireAuth()
   
   const [project, setProject] = useState<Project | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  
+  // Task form state
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [isTaskLoading, setIsTaskLoading] = useState(false)
 
   // Fetch project data when component mounts
   useEffect(() => {
@@ -40,12 +57,24 @@ export default function ProjectDetailPage() {
     setError(null)
     
     try {
-      const result = await getProject(id)
+      // Fetch both project and tasks in parallel
+      const [projectResult, tasksResult] = await Promise.all([
+        getProject(id),
+        getTasksByProject(id)
+      ])
       
-      if (result.success && result.data) {
-        setProject(result.data)
+      if (projectResult.success && projectResult.data) {
+        setProject(projectResult.data)
       } else {
-        setError(result.error || 'Project not found')
+        setError(projectResult.error || 'Project not found')
+        return
+      }
+
+      if (tasksResult.success && tasksResult.data) {
+        setTasks(tasksResult.data)
+      } else {
+        console.warn('Failed to load tasks:', tasksResult.error)
+        setTasks([]) // Set empty array if tasks fail to load
       }
     } catch (error) {
       console.error('Error fetching project:', error)
@@ -92,9 +121,118 @@ export default function ProjectDetailPage() {
     router.push('/projects')
   }
 
+  // Auto-dismiss success messages after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
+
   const handleAddTask = () => {
-    // TODO: Implement add task functionality (Task 9.3)
-    console.log('Add task to project:', project?.id)
+    setEditingTask(null)
+    setIsTaskFormOpen(true)
+  }
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setIsTaskFormOpen(true)
+  }
+
+  const handleCloseTaskForm = () => {
+    setIsTaskFormOpen(false)
+    setEditingTask(null)
+  }
+
+  const handleTaskSubmit = async (taskData: CreateTaskData | UpdateTaskData) => {
+    if (!project) return
+
+    setIsTaskLoading(true)
+    setError(null)
+
+    try {
+      let result: ApiResponse<Task>
+
+      if ('id' in taskData) {
+        // Update existing task
+        result = await updateTask(taskData as UpdateTaskData)
+        if (result.success && result.data) {
+          setTasks(prev => prev.map(task => 
+            task.id === result.data!.id ? result.data! : task
+          ))
+          setSuccessMessage('Task updated successfully!')
+        }
+      } else {
+        // Create new task
+        result = await createTask(taskData as CreateTaskData)
+        if (result.success && result.data) {
+          setTasks(prev => [...prev, result.data!])
+          setSuccessMessage('Task created successfully!')
+        }
+      }
+
+      if (!result.success) {
+        setError(result.error || 'Failed to save task')
+      }
+    } catch (error) {
+      console.error('Error saving task:', error)
+      setError('An unexpected error occurred while saving the task')
+    } finally {
+      setIsTaskLoading(false)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    const taskToDelete = tasks.find(t => t.id === taskId)
+    if (!taskToDelete) return
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${taskToDelete.name}"?\n\nThis action cannot be undone and will permanently delete the task and all its notes.`
+    )
+    
+    if (!confirmed) return
+
+    setError(null)
+
+    try {
+      const result = await deleteTask(taskId)
+      
+      if (result.success) {
+        setTasks(prev => prev.filter(task => task.id !== taskId))
+        setSuccessMessage('Task deleted successfully!')
+      } else {
+        setError(result.error || 'Failed to delete task')
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      setError('An unexpected error occurred while deleting the task')
+    }
+  }
+
+  const handleToggleTaskCompletion = async (taskId: string) => {
+    setError(null)
+
+    try {
+      const result = await toggleTaskCompletion(taskId)
+      
+      if (result.success && result.data) {
+        setTasks(prev => prev.map(task => 
+          task.id === taskId ? result.data! : task
+        ))
+        setSuccessMessage(
+          result.data.completed 
+            ? 'Task marked as completed!' 
+            : 'Task marked as incomplete!'
+        )
+      } else {
+        setError(result.error || 'Failed to update task completion status')
+      }
+    } catch (error) {
+      console.error('Error toggling task completion:', error)
+      setError('An unexpected error occurred while updating the task')
+    }
   }
 
   const formatDueDate = (dateString: string | null) => {
@@ -287,10 +425,21 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
+          {/* Success message */}
+          {successMessage && (
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="flex items-center gap-2 p-4">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <div className="text-green-600 text-sm">{successMessage}</div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Error message */}
           {error && (
             <Card className="border-red-200 bg-red-50">
               <CardContent className="flex items-center gap-2 p-4">
+                <AlertCircle className="h-4 w-4 text-red-600" />
                 <div className="text-red-600 text-sm">{error}</div>
               </CardContent>
             </Card>
@@ -358,19 +507,23 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Tasks Section (placeholder for future implementation) */}
+          {/* Tasks Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Tasks</CardTitle>
                   <CardDescription>
-                    Manage tasks for this project
+                    {tasks.length === 0 
+                      ? 'No tasks yet. Create your first task to get started.'
+                      : `${tasks.length} task${tasks.length === 1 ? '' : 's'} • ${tasks.filter(t => t.completed).length} completed`
+                    }
                   </CardDescription>
                 </div>
                 <Button 
                   onClick={handleAddTask}
                   className="flex items-center gap-2"
+                  disabled={isLoading}
                 >
                   <Plus className="h-4 w-4" />
                   Add Task
@@ -378,27 +531,76 @@ export default function ProjectDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <div className="mb-4">
-                  <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                    <Plus className="h-6 w-6" />
+              {tasks.length === 0 ? (
+                // Empty state
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="mb-4">
+                    <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                      <Plus className="h-6 w-6" />
+                    </div>
                   </div>
+                  <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
+                  <p className="text-sm mb-4">
+                    Tasks help you break down your project into manageable pieces.
+                  </p>
+                  <Button 
+                    variant="outline"
+                    onClick={handleAddTask}
+                    className="flex items-center gap-2"
+                    disabled={isLoading}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Your First Task
+                  </Button>
                 </div>
-                <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
-                <p className="text-sm mb-4">
-                  Tasks will appear here once you add them to this project.
-                </p>
-                <Button 
-                  variant="outline"
-                  onClick={handleAddTask}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Your First Task
-                </Button>
-              </div>
+              ) : (
+                // Tasks grid
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {tasks
+                    .sort((a, b) => {
+                      // Sort by: incomplete first, then by priority (High > Medium > Low), then by due date
+                      if (a.completed !== b.completed) {
+                        return a.completed ? 1 : -1
+                      }
+                      
+                      const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+                      const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+                      if (priorityDiff !== 0) return priorityDiff
+                      
+                      if (a.due_date && b.due_date) {
+                        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+                      }
+                      if (a.due_date) return -1
+                      if (b.due_date) return 1
+                      
+                      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    })
+                    .map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onEdit={handleEditTask}
+                        onDelete={handleDeleteTask}
+                        onToggleComplete={handleToggleTaskCompletion}
+                        isLoading={isLoading}
+                        showActions={true}
+                      />
+                    ))
+                  }
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Task Form Dialog */}
+          <TaskForm
+            isOpen={isTaskFormOpen}
+            onClose={handleCloseTaskForm}
+            onSubmit={handleTaskSubmit}
+            task={editingTask}
+            projectId={project?.id || ''}
+            isLoading={isTaskLoading}
+          />
         </div>
       </main>
     </div>
