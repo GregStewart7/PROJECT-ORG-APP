@@ -12,6 +12,7 @@ export interface Project {
   id: string
   user_id: string
   name: string
+  description: string | null
   due_date: string | null
   created_at: string
   updated_at: string
@@ -39,6 +40,7 @@ export interface Note {
 // Form interfaces for creating/editing entities
 export interface CreateProjectData {
   name: string
+  description?: string | null
   due_date?: string | null
 }
 
@@ -81,7 +83,7 @@ export interface ProjectWithTasksAndNotes extends Project {
 }
 
 // API Response interfaces
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T
   error?: string
   success: boolean
@@ -100,6 +102,13 @@ export interface TaskFilters {
   completed?: boolean
   due_date_before?: string
   due_date_after?: string
+}
+
+export interface NoteFilters {
+  task_id?: string
+  content_contains?: string
+  created_before?: string
+  created_after?: string
 }
 
 // Export utility types

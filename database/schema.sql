@@ -6,6 +6,7 @@ create table if not exists public.projects (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     name text not null check (char_length(name) > 0 and char_length(name) <= 100),
+    description text check (char_length(description) <= 500),
     due_date date,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
