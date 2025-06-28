@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Edit, Trash2, Clock, CheckCircle2, Circle, Flag } from 'lucide-react'
+import { Calendar, Edit, Trash2, Clock, CheckCircle2, Circle, Flag, FileText } from 'lucide-react'
 
 import { Task } from '@/types'
 import { 
@@ -21,6 +21,7 @@ interface TaskCardProps {
   onEdit?: (task: Task) => void
   onDelete?: (taskId: string) => void
   onToggleComplete?: (taskId: string) => void
+  onView?: (task: Task) => void
   isLoading?: boolean
   showActions?: boolean
 }
@@ -30,6 +31,7 @@ export function TaskCard({
   onEdit, 
   onDelete, 
   onToggleComplete,
+  onView,
   isLoading = false,
   showActions = true 
 }: TaskCardProps) {
@@ -61,6 +63,12 @@ export function TaskCard({
       } finally {
         setIsToggling(false)
       }
+    }
+  }
+
+  const handleView = () => {
+    if (onView && !isLoading) {
+      onView(task)
     }
   }
 
@@ -165,6 +173,7 @@ export function TaskCard({
               <CardTitle 
                 className={`text-lg font-semibold truncate cursor-pointer hover:text-blue-600 transition-colors ${task.completed ? 'line-through text-muted-foreground' : ''}`}
                 title={task.name}
+                onClick={handleView}
               >
                 {task.name}
               </CardTitle>
@@ -254,7 +263,7 @@ export function TaskCard({
             onClick={handleToggleComplete}
             disabled={isLoading || isToggling}
             variant={task.completed ? "outline" : "default"}
-            className="flex-1"
+            className="flex-[2]"
             size="sm"
           >
             {isToggling ? (
@@ -271,11 +280,13 @@ export function TaskCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleEdit}
+              onClick={handleView}
               disabled={isLoading}
-              className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+              className="hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+              title="View notes and details"
             >
-              <Edit className="size-4" />
+              <FileText className="size-4 mr-1" />
+              Notes
             </Button>
           )}
         </div>

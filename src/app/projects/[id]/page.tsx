@@ -3,16 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { ArrowLeft, Calendar, Clock, Edit, Trash2, FolderOpen, Plus, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Edit, Trash2, FolderOpen, Plus, CheckCircle, AlertCircle, ArrowUpDown, Filter } from 'lucide-react'
 
 import { AuthHeader } from "@/components/common/AuthHeader"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskCard } from "@/components/task/TaskCard"
 import { TaskForm } from "@/components/task/TaskForm"
+import { TaskDetailModal } from "@/components/task/TaskDetailModal"
+import { ProjectForm } from "@/components/project/ProjectForm"
 import { useRequireAuth } from "@/contexts/AuthContext"
 import { 
   getProject, 
+  updateProject,
   deleteProject, 
   getTasksByProject,
   createTask,
@@ -38,6 +42,18 @@ export default function ProjectDetailPage() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [isTaskLoading, setIsTaskLoading] = useState(false)
+  
+  // Task detail modal state
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+  
+  // Task sorting state
+  const [taskSortBy, setTaskSortBy] = useState<'default' | 'priority' | 'dueDate' | 'created' | 'alphabetical'>('default')
+  const [taskFilterBy, setTaskFilterBy] = useState<'all' | 'active' | 'completed'>('all')
+  
+  // Project form state
+  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false)
+  const [isProjectLoading, setIsProjectLoading] = useState(false)
 
   // Fetch project data when component mounts
   useEffect(() => {
@@ -85,8 +101,38 @@ export default function ProjectDetailPage() {
   }
 
   const handleEdit = () => {
-    // TODO: Implement edit functionality (Task 6.8)
-    console.log('Edit project:', project?.id)
+    setIsProjectFormOpen(true)
+  }
+
+  const handleCloseProjectForm = () => {
+    setIsProjectFormOpen(false)
+  }
+
+  const handleProjectSubmit = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!project) return
+
+    setIsProjectLoading(true)
+    setError(null)
+
+    try {
+      const result = await updateProject({
+        id: project.id,
+        ...projectData
+      })
+
+      if (result.success && result.data) {
+        setProject(result.data)
+        setSuccessMessage('Project updated successfully!')
+        setIsProjectFormOpen(false)
+      } else {
+        setError(result.error || 'Failed to update project')
+      }
+    } catch (error) {
+      console.error('Error updating project:', error)
+      setError('An unexpected error occurred while updating the project')
+    } finally {
+      setIsProjectLoading(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -144,6 +190,22 @@ export default function ProjectDetailPage() {
   const handleCloseTaskForm = () => {
     setIsTaskFormOpen(false)
     setEditingTask(null)
+  }
+
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task)
+    setIsTaskDetailOpen(true)
+  }
+
+  const handleCloseTaskDetail = () => {
+    setIsTaskDetailOpen(false)
+    setSelectedTask(null)
+  }
+
+  const handleTaskUpdate = (updatedTask: Task) => {
+    setTasks(prev => prev.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    ))
   }
 
   const handleTaskSubmit = async (taskData: CreateTaskData | UpdateTaskData) => {
@@ -273,6 +335,61 @@ export default function ProjectDetailPage() {
       return null
     }
   }
+
+  const sortAndFilterTasks = (tasks: Task[], sortBy: string, filterBy: string) => {
+    // First apply filters
+    let filteredTasks = tasks
+    switch (filterBy) {
+      case 'active':
+        filteredTasks = tasks.filter(task => !task.completed)
+        break
+      case 'completed':
+        filteredTasks = tasks.filter(task => task.completed)
+        break
+      default:
+        filteredTasks = tasks
+    }
+
+    // Then apply sorting
+    const tasksCopy = [...filteredTasks]
+    switch (sortBy) {
+      case 'priority':
+        const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+        return tasksCopy.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority])
+      case 'dueDate':
+        return tasksCopy.sort((a, b) => {
+          if (!a.due_date && !b.due_date) return 0
+          if (!a.due_date) return 1
+          if (!b.due_date) return -1
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        })
+      case 'created':
+        return tasksCopy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      case 'alphabetical':
+        return tasksCopy.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+      default:
+        // Default sorting: incomplete first, then by priority, then by due date
+        return tasksCopy.sort((a, b) => {
+          if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1
+          }
+          
+          const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+          const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+          if (priorityDiff !== 0) return priorityDiff
+          
+          if (a.due_date && b.due_date) {
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+          }
+          if (a.due_date) return -1
+          if (b.due_date) return 1
+          
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+    }
+  }
+
+  const sortedAndFilteredTasks = sortAndFilterTasks(tasks, taskSortBy, taskFilterBy)
 
   if (loading) {
     return (
@@ -478,32 +595,18 @@ export default function ProjectDetailPage() {
                 </p>
               </div>
 
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Due Date (only show if exists) */}
+              {project.due_date && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Created</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Due Date</h3>
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4" />
-                    {format(new Date(project.created_at), 'MMMM d, yyyy \'at\' h:mm a')}
+                    <Clock className="h-4 w-4" />
+                    {format(new Date(project.due_date), 'MMMM d, yyyy')}
                   </div>
                 </div>
+              )}
 
-                {project.due_date && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Due Date</h3>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="h-4 w-4" />
-                      {format(new Date(project.due_date), 'MMMM d, yyyy')}
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Project ID (for debugging/reference) */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Project ID</h3>
-                <code className="text-xs bg-muted px-2 py-1 rounded">{project.id}</code>
-              </div>
             </CardContent>
           </Card>
 
@@ -516,18 +619,52 @@ export default function ProjectDetailPage() {
                   <CardDescription>
                     {tasks.length === 0 
                       ? 'No tasks yet. Create your first task to get started.'
-                      : `${tasks.length} task${tasks.length === 1 ? '' : 's'} • ${tasks.filter(t => t.completed).length} completed`
+                      : `${sortedAndFilteredTasks.length} of ${tasks.length} task${tasks.length === 1 ? '' : 's'} • ${tasks.filter(t => t.completed).length} completed`
                     }
                   </CardDescription>
                 </div>
-                <Button 
-                  onClick={handleAddTask}
-                  className="flex items-center gap-2"
-                  disabled={isLoading}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Task
-                </Button>
+                <div className="flex items-center gap-2">
+                  {tasks.length > 1 && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Filter className="size-4 text-muted-foreground" />
+                        <Select value={taskFilterBy} onValueChange={(value: any) => setTaskFilterBy(value)}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All tasks</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ArrowUpDown className="size-4 text-muted-foreground" />
+                        <Select value={taskSortBy} onValueChange={(value: any) => setTaskSortBy(value)}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">Smart sort</SelectItem>
+                            <SelectItem value="priority">By priority</SelectItem>
+                            <SelectItem value="dueDate">By due date</SelectItem>
+                            <SelectItem value="created">By created date</SelectItem>
+                            <SelectItem value="alphabetical">Alphabetical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                  <Button 
+                    onClick={handleAddTask}
+                    className="flex items-center gap-2"
+                    disabled={isLoading}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Task
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -556,37 +693,32 @@ export default function ProjectDetailPage() {
               ) : (
                 // Tasks grid
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {tasks
-                    .sort((a, b) => {
-                      // Sort by: incomplete first, then by priority (High > Medium > Low), then by due date
-                      if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1
-                      }
-                      
-                      const priorityOrder = { High: 3, Medium: 2, Low: 1 }
-                      const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-                      if (priorityDiff !== 0) return priorityDiff
-                      
-                      if (a.due_date && b.due_date) {
-                        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-                      }
-                      if (a.due_date) return -1
-                      if (b.due_date) return 1
-                      
-                      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                    })
-                    .map((task) => (
+                  {sortedAndFilteredTasks.length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      <div className="mb-4">
+                        <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                          <Filter className="h-6 w-6" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">No tasks match your filters</h3>
+                      <p className="text-sm mb-4">
+                        Try adjusting your filter or sort settings.
+                      </p>
+                    </div>
+                  ) : (
+                    sortedAndFilteredTasks.map((task) => (
                       <TaskCard
                         key={task.id}
                         task={task}
                         onEdit={handleEditTask}
                         onDelete={handleDeleteTask}
                         onToggleComplete={handleToggleTaskCompletion}
+                        onView={handleViewTask}
                         isLoading={isLoading}
                         showActions={true}
                       />
                     ))
-                  }
+                  )}
                 </div>
               )}
             </CardContent>
@@ -600,6 +732,24 @@ export default function ProjectDetailPage() {
             task={editingTask}
             projectId={project?.id || ''}
             isLoading={isTaskLoading}
+          />
+
+          {/* Task Detail Modal */}
+          <TaskDetailModal
+            task={selectedTask}
+            isOpen={isTaskDetailOpen}
+            onClose={handleCloseTaskDetail}
+            onTaskUpdate={handleTaskUpdate}
+          />
+
+          {/* Project Edit Form */}
+          <ProjectForm
+            isOpen={isProjectFormOpen}
+            onClose={handleCloseProjectForm}
+            onSubmit={handleProjectSubmit}
+            isLoading={isProjectLoading}
+            mode="edit"
+            initialData={project}
           />
         </div>
       </main>

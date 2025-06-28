@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Calendar, FolderPlus, X } from 'lucide-react'
 
@@ -55,6 +55,26 @@ export function ProjectForm({
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Update form data when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        description: initialData.description || '',
+        due_date: initialData.due_date ? format(new Date(initialData.due_date), 'yyyy-MM-dd') : ''
+      })
+    } else {
+      // Reset form for create mode
+      setFormData({
+        name: '',
+        description: '',
+        due_date: ''
+      })
+    }
+    // Clear any existing errors when switching modes/data
+    setErrors({})
+  }, [initialData])
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}

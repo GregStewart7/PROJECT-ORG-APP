@@ -195,23 +195,9 @@ export function ProjectCard({
             className="flex-1"
             size="sm"
           >
-            <FolderOpen className="size-4" />
+            <FolderOpen className="size-4 mr-2" />
             View Project
           </Button>
-          
-          {showActions && (
-            <>
-              <Button
-                variant="outline"
-                onClick={handleEdit}
-                disabled={isLoading}
-                size="sm"
-              >
-                <Edit className="size-4" />
-                Edit
-              </Button>
-            </>
-          )}
         </div>
       </CardFooter>
     </Card>
