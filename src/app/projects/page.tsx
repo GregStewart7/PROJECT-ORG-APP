@@ -4,7 +4,7 @@ import { AuthHeader } from "@/components/common/AuthHeader"
 import { Button } from "@/components/ui/button"
 import { useRequireAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
-import { getProjects, createProject, updateProject, getProjectCount } from "@/lib/database"
+import { getProjects, createProject, updateProject, deleteProject, getProjectCount } from "@/lib/database"
 import { Project, CreateProjectData, UpdateProjectData } from "@/types"
 import { Plus, AlertCircle } from "lucide-react"
 import { ProjectCard } from "@/components/project/ProjectCard"
@@ -20,6 +20,8 @@ export default function ProjectsPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -146,8 +148,39 @@ export default function ProjectsPage() {
   }
 
   const handleProjectDelete = async (projectId: string) => {
-    // TODO: Implement delete with confirmation (Task 5.9)
-    console.log('Delete project:', projectId)
+    // Find the project to get its name for confirmation
+    const project = projects.find(p => p.id === projectId)
+    if (!project) return
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${project.name}"?\n\nThis action cannot be undone and will permanently delete the project and all its tasks and notes.`
+    )
+    
+    if (!confirmed) return
+
+    setDeletingProject(project)
+    setIsDeleting(true)
+    setError(null)
+    
+    try {
+      const result = await deleteProject(projectId)
+      
+      if (result.success) {
+        setSuccessMessage(`Project "${project.name}" deleted successfully!`)
+        // Refresh the projects list
+        await fetchProjects()
+        await fetchProjectCount()
+      } else {
+        setError(result.error || 'Failed to delete project')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      setError('An unexpected error occurred while deleting the project')
+    } finally {
+      setIsDeleting(false)
+      setDeletingProject(null)
+    }
   }
 
   if (loading) {
@@ -259,6 +292,7 @@ export default function ProjectsPage() {
                   onEdit={handleProjectEdit}
                   onDelete={handleProjectDelete}
                   showActions={true}
+                  isLoading={deletingProject?.id === project.id && isDeleting}
                 />
               ))}
             </div>
