@@ -4,8 +4,8 @@ import { AuthHeader } from "@/components/common/AuthHeader"
 import { Button } from "@/components/ui/button"
 import { useRequireAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
-import { getProjects, createProject, getProjectCount } from "@/lib/database"
-import { Project, CreateProjectData } from "@/types"
+import { getProjects, createProject, updateProject, getProjectCount } from "@/lib/database"
+import { Project, CreateProjectData, UpdateProjectData } from "@/types"
 import { Plus, AlertCircle } from "lucide-react"
 import { ProjectCard } from "@/components/project/ProjectCard"
 import { ProjectForm } from "@/components/project/ProjectForm"
@@ -18,6 +18,8 @@ export default function ProjectsPage() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -98,14 +100,49 @@ export default function ProjectsPage() {
     }
   }
 
+  const handleEditProject = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!editingProject) return
+
+    setIsEditing(true)
+    setError(null)
+    
+    try {
+      const updateData: UpdateProjectData = {
+        id: editingProject.id,
+        name: projectData.name,
+        description: projectData.description,
+        due_date: projectData.due_date
+      }
+      
+      const result = await updateProject(updateData)
+      
+      if (result.success && result.data) {
+        setSuccessMessage(`Project "${result.data.name}" updated successfully!`)
+        // Refresh the projects list
+        await fetchProjects()
+        await fetchProjectCount()
+        setIsProjectFormOpen(false)
+        setEditingProject(null)
+      } else {
+        setError(result.error || 'Failed to update project')
+      }
+    } catch (error) {
+      console.error('Error updating project:', error)
+      setError('An unexpected error occurred while updating the project')
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
   const handleProjectView = (projectId: string) => {
     // TODO: Navigate to project detail page
     console.log('View project:', projectId)
   }
 
   const handleProjectEdit = (project: Project) => {
-    // TODO: Open edit form (Task 5.8)
-    console.log('Edit project:', project)
+    setEditingProject(project)
+    setIsProjectFormOpen(true)
+    setError(null) // Clear any existing errors
   }
 
   const handleProjectDelete = async (projectId: string) => {
@@ -161,7 +198,11 @@ export default function ProjectsPage() {
               </p>
             </div>
             <Button 
-              onClick={() => setIsProjectFormOpen(true)}
+              onClick={() => {
+                setEditingProject(null)
+                setIsProjectFormOpen(true)
+                setError(null)
+              }}
               className="flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -236,7 +277,11 @@ export default function ProjectsPage() {
                   Projects help you organize tasks and track progress toward your goals.
                 </p>
                 <Button 
-                  onClick={() => setIsProjectFormOpen(true)}
+                  onClick={() => {
+                    setEditingProject(null)
+                    setIsProjectFormOpen(true)
+                    setError(null)
+                  }}
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
@@ -248,13 +293,18 @@ export default function ProjectsPage() {
         </div>
       </main>
 
-      {/* Project Creation Form */}
+      {/* Project Creation/Edit Form */}
       <ProjectForm
         isOpen={isProjectFormOpen}
-        onClose={() => setIsProjectFormOpen(false)}
-        onSubmit={handleCreateProject}
-        isLoading={isCreating}
-        mode="create"
+        onClose={() => {
+          setIsProjectFormOpen(false)
+          setEditingProject(null)
+          setError(null)
+        }}
+        onSubmit={editingProject ? handleEditProject : handleCreateProject}
+        isLoading={editingProject ? isEditing : isCreating}
+        mode={editingProject ? "edit" : "create"}
+        initialData={editingProject || undefined}
       />
     </div>
   )
