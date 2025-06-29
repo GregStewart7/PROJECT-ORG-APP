@@ -1,758 +1,487 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { ArrowLeft, Calendar, Clock, Edit, Trash2, FolderOpen, Plus, CheckCircle, AlertCircle, ArrowUpDown, Filter } from 'lucide-react'
+import { useRouter, useParams } from 'next/navigation'
+import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, Users, TrendingUp, FileText, Target, Zap, CheckCircle2, AlertCircle } from 'lucide-react'
 
-import { AuthHeader } from "@/components/common/AuthHeader"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TaskCard } from "@/components/task/TaskCard"
-import { TaskForm } from "@/components/task/TaskForm"
-import { TaskDetailModal } from "@/components/task/TaskDetailModal"
-import { ProjectForm } from "@/components/project/ProjectForm"
-import { useRequireAuth } from "@/contexts/AuthContext"
+import { useAuth } from '@/contexts/AuthContext'
+import { getProject, getTasksByProject, createTask, updateTask, deleteTask } from '@/lib/database'
+import { Project, Task } from '@/types'
+import { TaskCard } from '@/components/task/TaskCard'
+import { TaskForm } from '@/components/task/TaskForm'
+import { TaskDetailModal } from '@/components/task/TaskDetailModal'
+import { ExportButton } from '@/components/common/ExportButton'
+import { AuthHeader } from '@/components/common/AuthHeader'
 import { 
-  getProject, 
-  updateProject,
-  deleteProject, 
-  getTasksByProject,
-  createTask,
-  updateTask,
-  deleteTask,
-  toggleTaskCompletion
-} from "@/lib/database"
-import { Project, Task, CreateTaskData, UpdateTaskData, ApiResponse } from "@/types"
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardContent, 
+  CardDescription 
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog'
 
 export default function ProjectDetailPage() {
-  const { id } = useParams()
+  const { user } = useAuth()
   const router = useRouter()
-  const { user, loading } = useRequireAuth()
-  
+  const params = useParams()
+  const projectId = params.id as string
+
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   
-  // Task form state
-  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
+  // Task form states
+  const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [isTaskLoading, setIsTaskLoading] = useState(false)
+  const [taskFormLoading, setTaskFormLoading] = useState(false)
   
-  // Task detail modal state
+  // Task detail modal states
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
-  
-  // Task sorting state
-  const [taskSortBy, setTaskSortBy] = useState<'default' | 'priority' | 'dueDate' | 'created' | 'alphabetical'>('default')
-  const [taskFilterBy, setTaskFilterBy] = useState<'all' | 'active' | 'completed'>('all')
-  
-  // Project form state
-  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false)
-  const [isProjectLoading, setIsProjectLoading] = useState(false)
+  const [showTaskDetail, setShowTaskDetail] = useState(false)
 
-  // Fetch project data when component mounts
+  // Animation states
+  const [isVisible, setIsVisible] = useState(false)
+  const [showTasks, setShowTasks] = useState(false)
+
   useEffect(() => {
-    if (user && !loading && id) {
-      fetchProject()
+    if (user && projectId) {
+      loadData()
     }
-  }, [user, loading, id])
+  }, [user, projectId])
 
-  const fetchProject = async () => {
-    if (!id || typeof id !== 'string') {
-      setError('Invalid project ID')
-      setIsLoading(false)
-      return
+  useEffect(() => {
+    // Trigger entrance animations
+    const timer1 = setTimeout(() => setIsVisible(true), 100)
+    const timer2 = setTimeout(() => setShowTasks(true), 600)
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
     }
+  }, [])
 
-    setIsLoading(true)
-    setError(null)
-    
+  const loadData = async () => {
     try {
-      // Fetch both project and tasks in parallel
+      setLoading(true)
       const [projectResult, tasksResult] = await Promise.all([
-        getProject(id),
-        getTasksByProject(id)
+        getProject(projectId),
+        getTasksByProject(projectId)
       ])
       
       if (projectResult.success && projectResult.data) {
         setProject(projectResult.data)
       } else {
-        setError(projectResult.error || 'Project not found')
+        setError(projectResult.error || 'Failed to load project')
         return
       }
-
+      
       if (tasksResult.success && tasksResult.data) {
         setTasks(tasksResult.data)
       } else {
-        console.warn('Failed to load tasks:', tasksResult.error)
-        setTasks([]) // Set empty array if tasks fail to load
+        setError(tasksResult.error || 'Failed to load tasks')
+        setTasks([]) // Ensure tasks is always an array
       }
-    } catch (error) {
-      console.error('Error fetching project:', error)
-      setError('An unexpected error occurred while loading the project')
+    } catch (err) {
+      setError('Failed to load project data')
+      console.error('Error loading project data:', err)
+      setTasks([]) // Ensure tasks is always an array
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const handleEdit = () => {
-    setIsProjectFormOpen(true)
-  }
-
-  const handleCloseProjectForm = () => {
-    setIsProjectFormOpen(false)
-  }
-
-  const handleProjectSubmit = async (projectData: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!project) return
-
-    setIsProjectLoading(true)
-    setError(null)
-
+  const handleTaskSubmit = async (data: any) => {
     try {
-      const result = await updateProject({
-        id: project.id,
-        ...projectData
-      })
-
-      if (result.success && result.data) {
-        setProject(result.data)
-        setSuccessMessage('Project updated successfully!')
-        setIsProjectFormOpen(false)
-      } else {
-        setError(result.error || 'Failed to update project')
-      }
-    } catch (error) {
-      console.error('Error updating project:', error)
-      setError('An unexpected error occurred while updating the project')
-    } finally {
-      setIsProjectLoading(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!project) return
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${project.name}"?\n\nThis action cannot be undone and will permanently delete the project and all its tasks and notes.`
-    )
-    
-    if (!confirmed) return
-
-    setIsDeleting(true)
-    
-    try {
-      const result = await deleteProject(project.id)
+      setTaskFormLoading(true)
       
-      if (result.success) {
-        // Navigate back to projects list after successful deletion
-        router.push('/projects')
-      } else {
-        setError(result.error || 'Failed to delete project')
-      }
-    } catch (error) {
-      console.error('Error deleting project:', error)
-      setError('An unexpected error occurred while deleting the project')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  const handleBack = () => {
-    router.push('/projects')
-  }
-
-  // Auto-dismiss success messages after 5 seconds
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(null)
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [successMessage])
-
-  const handleAddTask = () => {
-    setEditingTask(null)
-    setIsTaskFormOpen(true)
-  }
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task)
-    setIsTaskFormOpen(true)
-  }
-
-  const handleCloseTaskForm = () => {
-    setIsTaskFormOpen(false)
-    setEditingTask(null)
-  }
-
-  const handleViewTask = (task: Task) => {
-    setSelectedTask(task)
-    setIsTaskDetailOpen(true)
-  }
-
-  const handleCloseTaskDetail = () => {
-    setIsTaskDetailOpen(false)
-    setSelectedTask(null)
-  }
-
-  const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(prev => prev.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    ))
-  }
-
-  const handleTaskSubmit = async (taskData: CreateTaskData | UpdateTaskData) => {
-    if (!project) return
-
-    setIsTaskLoading(true)
-    setError(null)
-
-    try {
-      let result: ApiResponse<Task>
-
-      if ('id' in taskData) {
+      if ('id' in data) {
         // Update existing task
-        result = await updateTask(taskData as UpdateTaskData)
+        const result = await updateTask(data)
+        
         if (result.success && result.data) {
-          setTasks(prev => prev.map(task => 
-            task.id === result.data!.id ? result.data! : task
-          ))
-          setSuccessMessage('Task updated successfully!')
+          setTasks(prev => prev.map(t => t.id === data.id ? result.data! : t))
+          setEditingTask(null)
+          setShowTaskForm(false)
+          setSuccess('Task updated successfully!')
+          setTimeout(() => setSuccess(null), 3000)
+        } else {
+          setError(result.error || 'Failed to update task')
+          setTimeout(() => setError(null), 3000)
         }
       } else {
         // Create new task
-        result = await createTask(taskData as CreateTaskData)
+        const result = await createTask(data)
+        
         if (result.success && result.data) {
-          setTasks(prev => [...prev, result.data!])
-          setSuccessMessage('Task created successfully!')
+          setTasks(prev => [result.data!, ...prev])
+          setShowTaskForm(false)
+          setSuccess('Task created successfully!')
+          setTimeout(() => setSuccess(null), 3000)
+        } else {
+          setError(result.error || 'Failed to create task')
+          setTimeout(() => setError(null), 3000)
         }
       }
-
-      if (!result.success) {
-        setError(result.error || 'Failed to save task')
-      }
-    } catch (error) {
-      console.error('Error saving task:', error)
-      setError('An unexpected error occurred while saving the task')
+    } catch (err) {
+      setError(editingTask ? 'Failed to update task' : 'Failed to create task')
+      console.error('Error with task:', err)
+      setTimeout(() => setError(null), 3000)
     } finally {
-      setIsTaskLoading(false)
+      setTaskFormLoading(false)
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    const taskToDelete = tasks.find(t => t.id === taskId)
-    if (!taskToDelete) return
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${taskToDelete.name}"?\n\nThis action cannot be undone and will permanently delete the task and all its notes.`
-    )
-    
-    if (!confirmed) return
-
-    setError(null)
-
     try {
-      const result = await deleteTask(taskId)
-      
-      if (result.success) {
-        setTasks(prev => prev.filter(task => task.id !== taskId))
-        setSuccessMessage('Task deleted successfully!')
-      } else {
-        setError(result.error || 'Failed to delete task')
-      }
-    } catch (error) {
-      console.error('Error deleting task:', error)
-      setError('An unexpected error occurred while deleting the task')
+      await deleteTask(taskId)
+      setTasks(prev => prev.filter(t => t.id !== taskId))
+      setSuccess('Task deleted successfully!')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError('Failed to delete task')
+      console.error('Error deleting task:', err)
+      setTimeout(() => setError(null), 3000)
     }
   }
 
-  const handleToggleTaskCompletion = async (taskId: string) => {
-    setError(null)
-
+  const handleToggleComplete = async (taskId: string, completed: boolean) => {
     try {
-      const result = await toggleTaskCompletion(taskId)
+      const result = await updateTask({
+        id: taskId,
+        completed
+      })
       
       if (result.success && result.data) {
-        setTasks(prev => prev.map(task => 
-          task.id === taskId ? result.data! : task
-        ))
-        setSuccessMessage(
-          result.data.completed 
-            ? 'Task marked as completed!' 
-            : 'Task marked as incomplete!'
-        )
+        setTasks(prev => prev.map(t => t.id === taskId ? result.data! : t))
       } else {
-        setError(result.error || 'Failed to update task completion status')
+        setError(result.error || 'Failed to toggle task completion')
+        setTimeout(() => setError(null), 3000)
       }
-    } catch (error) {
-      console.error('Error toggling task completion:', error)
-      setError('An unexpected error occurred while updating the task')
+    } catch (err) {
+      setError('Failed to toggle task completion')
+      console.error('Error toggling task completion:', err)
+      setTimeout(() => setError(null), 3000)
     }
   }
 
-  const formatDueDate = (dateString: string | null) => {
-    if (!dateString) return null
-    
-    try {
-      const date = new Date(dateString)
-      const today = new Date()
-      const diffTime = date.getTime() - today.getTime()
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
-      if (diffDays < 0) {
-        return {
-          text: `${Math.abs(diffDays)} days overdue`,
-          variant: 'overdue' as const,
-          className: 'text-red-600 bg-red-50 border-red-200'
-        }
-      } else if (diffDays === 0) {
-        return {
-          text: 'Due today',
-          variant: 'today' as const,
-          className: 'text-orange-600 bg-orange-50 border-orange-200'
-        }
-      } else if (diffDays <= 7) {
-        return {
-          text: `Due in ${diffDays} days`,
-          variant: 'soon' as const,
-          className: 'text-yellow-600 bg-yellow-50 border-yellow-200'
-        }
-      } else {
-        return {
-          text: `Due ${format(date, 'MMM d, yyyy')}`,
-          variant: 'normal' as const,
-          className: 'text-green-600 bg-green-50 border-green-200'
-        }
-      }
-    } catch {
-      return null
-    }
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task)
+    setShowTaskDetail(true)
   }
 
-  const sortAndFilterTasks = (tasks: Task[], sortBy: string, filterBy: string) => {
-    // First apply filters
-    let filteredTasks = tasks
-    switch (filterBy) {
-      case 'active':
-        filteredTasks = tasks.filter(task => !task.completed)
-        break
-      case 'completed':
-        filteredTasks = tasks.filter(task => task.completed)
-        break
-      default:
-        filteredTasks = tasks
-    }
-
-    // Then apply sorting
-    const tasksCopy = [...filteredTasks]
-    switch (sortBy) {
-      case 'priority':
-        const priorityOrder = { High: 3, Medium: 2, Low: 1 }
-        return tasksCopy.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority])
-      case 'dueDate':
-        return tasksCopy.sort((a, b) => {
-          if (!a.due_date && !b.due_date) return 0
-          if (!a.due_date) return 1
-          if (!b.due_date) return -1
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-        })
-      case 'created':
-        return tasksCopy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      case 'alphabetical':
-        return tasksCopy.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-      default:
-        // Default sorting: incomplete first, then by priority, then by due date
-        return tasksCopy.sort((a, b) => {
-          if (a.completed !== b.completed) {
-            return a.completed ? 1 : -1
-          }
-          
-          const priorityOrder = { High: 3, Medium: 2, Low: 1 }
-          const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-          if (priorityDiff !== 0) return priorityDiff
-          
-          if (a.due_date && b.due_date) {
-            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-          }
-          if (a.due_date) return -1
-          if (b.due_date) return 1
-          
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
-    }
+  const openCreateTaskForm = () => {
+    setEditingTask(null)
+    setShowTaskForm(true)
   }
 
-  const sortedAndFilteredTasks = sortAndFilterTasks(tasks, taskSortBy, taskFilterBy)
+  const openEditTaskForm = (task: Task) => {
+    setEditingTask(task)
+    setShowTaskForm(true)
+  }
 
-  if (loading) {
+  const closeTaskForm = () => {
+    setShowTaskForm(false)
+    setEditingTask(null)
+  }
+
+  const closeTaskDetail = () => {
+    setShowTaskDetail(false)
+    setSelectedTask(null)
+  }
+
+  // Calculate task statistics
+  const completedTasks = tasks.filter(t => t.completed).length
+  const totalTasks = tasks.length
+  const highPriorityTasks = tasks.filter(t => t.priority === 'High').length
+  const overdueTasks = tasks.filter(t => {
+    if (!t.due_date) return false
+    return new Date(t.due_date) < new Date() && !t.completed
+  }).length
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <AuthHeader />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="h-8 w-8 bg-muted rounded"></div>
-              <div className="h-8 bg-muted rounded w-1/3"></div>
-            </div>
-            <Card>
-              <CardHeader>
-                <div className="h-6 bg-muted rounded w-1/2"></div>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-muted rounded w-full"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
   }
 
-  if (!user) {
-    return null // Will redirect in useEffect
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+        <AuthHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header skeleton */}
+          <div className="mb-8 animate-pulse">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+              <div className="h-8 bg-gray-200 rounded w-48"></div>
+            </div>
+            <Card className="bg-gradient-to-br from-gray-100 to-gray-50 border-gray-200">
+              <CardContent className="p-8">
+                <div className="space-y-4">
+                  <div className="h-10 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-20 bg-gray-200 rounded-lg"></div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Tasks skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-48 bg-gray-200 rounded-lg animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (error && !project) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
         <AuthHeader />
-        <main className="container mx-auto px-4 py-8">
-          <div className="space-y-6">
-            {/* Header with back button */}
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Projects
-              </Button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-16">
+            <div className="w-24 h-24 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
+              <AlertCircle className="size-12 text-red-600" />
             </div>
-
-            {/* Error display */}
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="flex items-center gap-2 p-6">
-                <div className="text-red-600">
-                  <h2 className="text-lg font-semibold mb-2">Project Not Found</h2>
-                  <p className="text-sm">{error}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Project Not Found</h2>
+            <p className="text-gray-600 mb-8">The project you're looking for doesn't exist or you don't have access to it.</p>
+            <Button
+              onClick={() => router.push('/projects')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <ArrowLeft className="size-4 mr-2" />
+              Back to Projects
+            </Button>
           </div>
-        </main>
+        </div>
       </div>
     )
   }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <AuthHeader />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="h-8 w-8 bg-muted rounded"></div>
-              <div className="h-8 bg-muted rounded w-1/3"></div>
-            </div>
-            <Card>
-              <CardHeader>
-                <div className="h-6 bg-muted rounded w-1/2"></div>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-muted rounded w-full"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (!project) {
-    return null
-  }
-
-  const dueDateInfo = formatDueDate(project.due_date)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
       <AuthHeader />
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          {/* Header with navigation and actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Projects
-              </Button>
-              <div className="h-6 w-px bg-border"></div>
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-blue-600" />
-                <h1 className="text-2xl font-bold">{project.name}</h1>
-              </div>
-            </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Enhanced Navigation */}
+        <div className={`mb-8 transform transition-all duration-500 ease-out ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/projects')}
+            className="group hover:bg-blue-50 hover:text-blue-700 transition-all duration-300 hover:scale-105"
+          >
+            <ArrowLeft className="size-4 mr-2 transition-transform duration-300 group-hover:-translate-x-1" />
+            Back to Projects
+          </Button>
+        </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEdit}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-              >
-                {isDeleting ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            </div>
-          </div>
+        {/* Compact Project Header */}
+        <div className={`mb-6 transform transition-all duration-500 ease-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ animationDelay: '200ms' }}>
+          <Card className="bg-gradient-to-r from-blue-50 via-white to-purple-50/30 border-blue-200/30 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                {/* Project Info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-md">
+                      <FolderOpen className="size-7 text-blue-700" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {/* Text Content */}
+                      <div className="mb-3">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 truncate mb-1">
+                          {project?.name}
+                        </h1>
+                        {project?.description && (
+                          <p className="text-gray-600 text-base leading-relaxed mb-2">
+                            {project.description}
+                          </p>
+                        )}
+                        {project?.due_date && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="size-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">
+                              Due: {new Date(project.due_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
-          {/* Success message */}
-          {successMessage && (
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="flex items-center gap-2 p-4">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <div className="text-green-600 text-sm">{successMessage}</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Error message */}
-          {error && (
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="flex items-center gap-2 p-4">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <div className="text-red-600 text-sm">{error}</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Project Information */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl">Project Details</CardTitle>
-                  <CardDescription>
-                    Created {format(new Date(project.created_at), 'MMMM d, yyyy')}
-                    {project.updated_at !== project.created_at && (
-                      <span> • Updated {format(new Date(project.updated_at), 'MMMM d, yyyy')}</span>
-                    )}
-                  </CardDescription>
-                </div>
-                
-                {dueDateInfo && (
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border ${dueDateInfo.className}`}>
-                    <Clock className="h-4 w-4" />
-                    {dueDateInfo.text}
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Description */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                <p className="text-sm leading-relaxed">
-                  {project.description || (
-                    <span className="text-muted-foreground italic">No description provided</span>
-                  )}
-                </p>
-              </div>
-
-              {/* Due Date (only show if exists) */}
-              {project.due_date && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Due Date</h3>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4" />
-                    {format(new Date(project.due_date), 'MMMM d, yyyy')}
+                      {/* Compact Statistics - Below and aligned with text */}
+                      <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200/50">
+                          <Target className="size-4 text-blue-600" />
+                          <span className="text-sm font-semibold text-blue-700">{totalTasks} Tasks</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200/50">
+                          <CheckCircle2 className="size-4 text-green-600" />
+                          <span className="text-sm font-semibold text-green-700">{completedTasks} Done</span>
+                        </div>
+                        {highPriorityTasks > 0 && (
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200/50">
+                            <Zap className="size-4 text-orange-600" />
+                            <span className="text-sm font-semibold text-orange-700">{highPriorityTasks} High</span>
+                          </div>
+                        )}
+                        {overdueTasks > 0 && (
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-lg border border-red-200/50">
+                            <AlertCircle className="size-4 text-red-600" />
+                            <span className="text-sm font-semibold text-red-700">{overdueTasks} Overdue</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
 
-
-            </CardContent>
-          </Card>
-
-          {/* Tasks Section */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Tasks</CardTitle>
-                  <CardDescription>
-                    {tasks.length === 0 
-                      ? 'No tasks yet. Create your first task to get started.'
-                      : `${sortedAndFilteredTasks.length} of ${tasks.length} task${tasks.length === 1 ? '' : 's'} • ${tasks.filter(t => t.completed).length} completed`
-                    }
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  {tasks.length > 1 && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Filter className="size-4 text-muted-foreground" />
-                        <Select value={taskFilterBy} onValueChange={(value: any) => setTaskFilterBy(value)}>
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All tasks</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ArrowUpDown className="size-4 text-muted-foreground" />
-                        <Select value={taskSortBy} onValueChange={(value: any) => setTaskSortBy(value)}>
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Smart sort</SelectItem>
-                            <SelectItem value="priority">By priority</SelectItem>
-                            <SelectItem value="dueDate">By due date</SelectItem>
-                            <SelectItem value="created">By created date</SelectItem>
-                            <SelectItem value="alphabetical">Alphabetical</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
-                  <Button 
-                    onClick={handleAddTask}
-                    className="flex items-center gap-2"
-                    disabled={isLoading}
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                  <ExportButton 
+                    project={project!} 
+                    className="h-10"
+                    size="sm"
+                  />
+                  <Button
+                    onClick={openCreateTaskForm}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-4 py-2 h-10 transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="size-4 mr-2" />
                     Add Task
                   </Button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {tasks.length === 0 ? (
-                // Empty state
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="mb-4">
-                    <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                      <Plus className="h-6 w-6" />
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
-                  <p className="text-sm mb-4">
-                    Tasks help you break down your project into manageable pieces.
-                  </p>
-                  <Button 
-                    variant="outline"
-                    onClick={handleAddTask}
-                    className="flex items-center gap-2"
-                    disabled={isLoading}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Your First Task
-                  </Button>
-                </div>
-              ) : (
-                // Tasks grid
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {sortedAndFilteredTasks.length === 0 ? (
-                    <div className="col-span-full text-center py-8 text-muted-foreground">
-                      <div className="mb-4">
-                        <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                          <Filter className="h-6 w-6" />
-                        </div>
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">No tasks match your filters</h3>
-                      <p className="text-sm mb-4">
-                        Try adjusting your filter or sort settings.
-                      </p>
-                    </div>
-                  ) : (
-                    sortedAndFilteredTasks.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onEdit={handleEditTask}
-                        onDelete={handleDeleteTask}
-                        onToggleComplete={handleToggleTaskCompletion}
-                        onView={handleViewTask}
-                        isLoading={isLoading}
-                        showActions={true}
-                      />
-                    ))
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
-
-          {/* Task Form Dialog */}
-          <TaskForm
-            isOpen={isTaskFormOpen}
-            onClose={handleCloseTaskForm}
-            onSubmit={handleTaskSubmit}
-            task={editingTask}
-            projectId={project?.id || ''}
-            isLoading={isTaskLoading}
-          />
-
-          {/* Task Detail Modal */}
-          <TaskDetailModal
-            task={selectedTask}
-            isOpen={isTaskDetailOpen}
-            onClose={handleCloseTaskDetail}
-            onTaskUpdate={handleTaskUpdate}
-          />
-
-          {/* Project Edit Form */}
-          <ProjectForm
-            isOpen={isProjectFormOpen}
-            onClose={handleCloseProjectForm}
-            onSubmit={handleProjectSubmit}
-            isLoading={isProjectLoading}
-            mode="edit"
-            initialData={project}
-          />
         </div>
-      </main>
+
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2">
+              <div className="p-1 bg-green-200 rounded-full">
+                <CheckCircle2 className="size-4 text-green-700" />
+              </div>
+              <p className="text-green-800 font-medium">{success}</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-lg animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2">
+              <div className="p-1 bg-red-200 rounded-full">
+                <AlertCircle className="size-4 text-red-700" />
+              </div>
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content - Tasks and Notes */}
+        <div className={`transform transition-all duration-700 ease-out ${showTasks ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+
+
+          {/* Tasks Section */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg shadow-sm">
+                <FileText className="size-6 text-blue-700" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Tasks</h3>
+                <p className="text-gray-600 text-sm">Track your project work and progress</p>
+              </div>
+            </div>
+
+            {tasks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tasks.map((task, index) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onEdit={openEditTaskForm}
+                    onDelete={handleDeleteTask}
+                    onViewDetails={handleViewTask}
+                    onToggleComplete={handleToggleComplete}
+                    animationDelay={index * 100}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-2 border-dashed border-blue-200 bg-blue-50/30">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
+                    <FileText className="size-8 text-blue-600" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">No tasks yet</h4>
+                  <p className="text-gray-600 mb-4">Create your first task to get started</p>
+                  <Button
+                    onClick={openCreateTaskForm}
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Plus className="size-4 mr-2" />
+                    Create Task
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          
+        </div>
+      </div>
+
+      {/* Enhanced Task Form Dialog */}
+      <Dialog open={showTaskForm} onOpenChange={closeTaskForm}>
+        <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-blue-50/30 border-blue-200/30 shadow-2xl backdrop-blur-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 to-purple-50/10 rounded-lg" />
+          <div className="relative z-10">
+            <DialogHeader className="pb-6">
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                  <FileText className="size-6 text-white" />
+                </div>
+                {editingTask ? 'Edit Task' : 'Create New Task'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <TaskForm
+              isOpen={showTaskForm}
+              onClose={closeTaskForm}
+              onSubmit={handleTaskSubmit}
+              task={editingTask}
+              projectId={projectId}
+              isLoading={taskFormLoading}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enhanced Task Detail Modal */}
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={showTaskDetail}
+        onClose={closeTaskDetail}
+        onTaskUpdate={loadData}
+      />
     </div>
   )
 } 

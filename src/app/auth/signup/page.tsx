@@ -1,11 +1,11 @@
 'use client'
 
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { FolderOpen, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { FolderOpen, Eye, EyeOff, AlertCircle, Crown, ArrowRight, CheckCircle2, Mail, Lock, Shield, Zap, User } from "lucide-react"
 import { useRedirectIfAuthenticated } from "@/contexts/AuthContext"
 import { authValidation, signUp } from "@/lib/auth"
 import { useState } from "react"
@@ -167,8 +167,8 @@ export default function SignupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
       </div>
     )
   }
@@ -176,233 +176,292 @@ export default function SignupPage() {
   // Show success screen if signup was successful but needs email confirmation
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-              <FolderOpen className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">ProjectHub</span>
-            </Link>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-400/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
 
-          {/* Success Card */}
-          <Card>
-            <CardHeader className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+        <div className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-2xl">
+            <CardHeader className="text-center pb-8">
+              {/* Success Icon */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="relative">
+                  <div className="p-4 bg-gradient-to-br from-green-600 to-emerald-600 rounded-full shadow-lg">
+                    <CheckCircle2 className="size-12 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-white rounded-full"></div>
+                  </div>
+                </div>
               </div>
-              <CardTitle className="text-2xl">Check Your Email</CardTitle>
-              <CardDescription>
-                We've sent a confirmation link to <strong>{formData.email}</strong>
+
+              <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
+                Check Your Email!
+              </CardTitle>
+              <CardDescription className="text-gray-600 text-lg">
+                We've sent a confirmation link to your email address
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please click the link in your email to verify your account and complete the signup process.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Can't find the email? Check your spam folder or{" "}
-                <button 
-                  onClick={() => setSignupSuccess(false)}
-                  className="text-primary hover:underline font-medium"
+
+            <CardContent className="text-center space-y-6">
+              <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                <p className="text-gray-700 font-medium mb-2">
+                  Almost there! Please check your email
+                </p>
+                <p className="text-sm text-gray-600">
+                  Click the confirmation link in the email we sent to <span className="font-semibold text-green-700">{formData.email}</span> to activate your account.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <Button
+                  onClick={() => window.location.href = 'mailto:'}
+                  className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold transition-all duration-300 hover:scale-105"
                 >
-                  try again
-                </button>
-              </p>
+                  <Mail className="size-5 mr-2" />
+                  Open Email App
+                </Button>
+
+                <Link
+                  href="/auth/login"
+                  className="block w-full text-center py-3 px-4 bg-white/70 backdrop-blur-sm hover:bg-white/90 border border-gray-200 rounded-xl font-medium text-gray-700 hover:text-green-600 transition-all duration-300 hover:scale-105 hover:shadow-md"
+                >
+                  Back to Sign In
+                </Link>
+              </div>
             </CardContent>
           </Card>
-
-          {/* Footer Links */}
-          <div className="text-center mt-6">
-            <p className="text-sm text-muted-foreground">
-              Already confirmed your email?{" "}
-              <Link 
-                href="/auth/login" 
-                className="text-primary hover:underline font-medium"
-              >
-                Sign in here
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <FolderOpen className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">ProjectHub</span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
 
-        {/* Signup Card */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Create Your Account</CardTitle>
-            <CardDescription>
-              Start organizing your projects and tasks today
+      <div className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-2xl">
+          <CardHeader className="text-center pb-8">
+            {/* ProjectHub Branding */}
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg">
+                  <Crown className="size-8 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
+                  ProjectHub
+                </h1>
+                <p className="text-xs text-gray-600 font-medium">Professional Edition</p>
+              </div>
+            </div>
+
+            <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
+              Create Account
+            </CardTitle>
+            <CardDescription className="text-gray-600 text-lg">
+              Join thousands of professionals managing projects efficiently
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* General Error Message */}
-              {errors.general && (
-                <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{errors.general}</span>
-                </div>
-              )}
 
-              {/* Email Field */}
+          <CardContent>
+            {errors.general && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl animate-in slide-in-from-top-2 duration-300">
+                <p className="text-red-800 font-medium text-center">{errors.general}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  required
-                  disabled={isSubmitting}
-                  className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
-                />
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                  Email Address
+                </Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="size-5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                  </div>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                    disabled={isSubmitting}
+                    className="pl-10 pr-4 h-12 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${formData.email && formData.email.includes('@') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  </div>
+                </div>
                 {errors.email && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.email}
+                  <p className="text-xs text-red-600 flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    <span className="font-medium">{errors.email}</span>
                   </p>
                 )}
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                  Password
+                </Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="size-5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                  </div>
                   <Input
                     id="password"
                     name="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Create a password"
                     value={formData.password}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
                     disabled={isSubmitting}
-                    className={`pr-10 ${errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className="pl-10 pr-12 h-12 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isSubmitting}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-blue-600 transition-colors duration-200"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      <EyeOff className="size-5 text-gray-400" />
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="size-5 text-gray-400" />
                     )}
-                  </Button>
+                  </button>
+                  <div className="absolute inset-y-0 right-10 pr-3 flex items-center">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${formData.password.length >= 6 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500">Must be at least 6 characters long</p>
                 {errors.password && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.password}
+                  <p className="text-xs text-red-600 flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    <span className="font-medium">{errors.password}</span>
                   </p>
                 )}
               </div>
 
-              {/* Confirm Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
+                <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+                  Confirm Password
+                </Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Shield className="size-5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                  </div>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
                     disabled={isSubmitting}
-                    className={`pr-10 ${errors.confirmPassword ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className="pl-10 pr-12 h-12 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    disabled={isSubmitting}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-blue-600 transition-colors duration-200"
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      <EyeOff className="size-5 text-gray-400" />
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="size-5 text-gray-400" />
                     )}
-                  </Button>
+                  </button>
+                  <div className="absolute inset-y-0 right-10 pr-3 flex items-center">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${formData.confirmPassword && formData.password && formData.confirmPassword === formData.password ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  </div>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.confirmPassword}
+                  <p className="text-xs text-red-600 flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    <span className="font-medium">{errors.confirmPassword}</span>
                   </p>
                 )}
               </div>
 
-              {/* Submit Button */}
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
                 disabled={isSubmitting}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     Creating Account...
-                  </>
+                  </div>
                 ) : (
-                  'Create Account'
+                  <div className="flex items-center gap-2">
+                    <User className="size-5" />
+                    Create Account
+                    <ArrowRight className="size-5" />
+                  </div>
                 )}
               </Button>
-
-              {/* Terms Notice */}
-              <p className="text-xs text-muted-foreground text-center">
-                By creating an account, you agree to our Terms of Service and Privacy Policy
-              </p>
             </form>
           </CardContent>
-        </Card>
 
-        {/* Footer Links */}
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link 
-              href="/auth/login" 
-              className="text-primary hover:underline font-medium"
-            >
-              Sign in here
-            </Link>
-          </p>
-          <p className="text-xs text-muted-foreground mt-4">
-            <Link href="/" className="hover:underline">
-              ← Back to home
-            </Link>
-          </p>
-        </div>
+          <CardFooter className="pt-6">
+            <div className="w-full space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white/80 text-gray-600 font-medium">Why choose ProjectHub?</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/50 hover:shadow-md transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Zap className="size-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">Fast Setup</span>
+                  </div>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200/50 hover:shadow-md transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Shield className="size-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-900">Enterprise Security</span>
+                  </div>
+                </Card>
+              </div>
+
+              <Link
+                href="/auth/login"
+                className="block w-full text-center py-3 px-4 bg-white/70 backdrop-blur-sm hover:bg-white/90 border border-gray-200 rounded-xl font-medium text-gray-700 hover:text-blue-600 transition-all duration-300 hover:scale-105 hover:shadow-md"
+              >
+                Already have an account? Sign In
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   )

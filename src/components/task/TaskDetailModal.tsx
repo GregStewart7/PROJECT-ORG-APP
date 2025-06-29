@@ -185,12 +185,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
     const noteToDelete = notes.find(n => n.id === noteId)
     if (!noteToDelete) return
 
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this note?\n\nThis action cannot be undone.'
-    )
-    
-    if (!confirmed) return
-
     setError(null)
 
     try {
@@ -249,17 +243,19 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" showCloseButton={false}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-white/95 backdrop-blur-xl border border-gray-200/50 shadow-2xl" showCloseButton={false}>
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleToggleCompletion}
                   disabled={isTogglingCompletion}
-                  className="hover:scale-110 transition-transform"
+                  className="hover:scale-110 transition-all duration-200 relative"
                   title={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
                 >
-                  {task.completed ? (
+                  {isTogglingCompletion ? (
+                    <div className="size-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  ) : task.completed ? (
                     <CheckCircle className="size-6 text-green-600" />
                   ) : (
                     <Circle className="size-6 text-gray-400 hover:text-green-600" />
@@ -283,27 +279,34 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-6">
-            {/* Messages */}
+            {/* Enhanced Messages */}
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-700">
-                <AlertCircle className="size-4 flex-shrink-0" />
-                <span className="text-sm">{error}</span>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200/50 rounded-xl text-red-700 shadow-sm animate-in slide-in-from-top-2 duration-300">
+                <div className="p-1 rounded-full bg-gradient-to-br from-red-500 to-red-600">
+                  <AlertCircle className="size-4 text-white flex-shrink-0" />
+                </div>
+                <span className="text-sm font-medium">{error}</span>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700">
-                <CheckCircle className="size-4 flex-shrink-0" />
-                <span className="text-sm">{successMessage}</span>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/50 rounded-xl text-green-700 shadow-sm animate-in slide-in-from-top-2 duration-300">
+                <div className="p-1 rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
+                  <CheckCircle className="size-4 text-white flex-shrink-0" />
+                </div>
+                <span className="text-sm font-medium">{successMessage}</span>
               </div>
             )}
 
-            {/* Task Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Task Details</CardTitle>
+            {/* Enhanced Task Details */}
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm border border-gray-200/50 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white to-indigo-50/20 pointer-events-none" />
+              <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-blue-400/10 to-purple-400/5 rounded-full blur-2xl" />
+              
+              <CardHeader className="relative z-10">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">Task Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 relative z-10">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 min-w-0">
                     <Flag className="size-4 text-muted-foreground flex-shrink-0" />
@@ -348,9 +351,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
               </CardContent>
             </Card>
 
-            {/* Notes Section */}
-            <Card>
-              <CardHeader className="pb-4">
+            {/* Enhanced Notes Section */}
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm border border-gray-200/50 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-50/20 via-white to-blue-50/20 pointer-events-none" />
+              <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-green-400/10 to-blue-400/5 rounded-full blur-2xl" />
+              
+              <CardHeader className="pb-4 relative z-10">
                 <div className="flex items-center justify-between mb-3">
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="size-5" />
@@ -406,23 +412,54 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
                   Add notes to track progress, ideas, or important information
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative z-10">
                 {isLoadingNotes ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="space-y-4">
+                    {/* Enhanced Notes Loading Skeleton */}
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl border border-gray-200/50 shadow-sm" style={{ animationDelay: `${i * 150}ms` }}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="space-y-2 flex-1">
+                            <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-100 rounded w-3/4"></div>
+                            <div className="h-3 bg-gradient-to-r from-gray-150 to-gray-100 rounded w-1/2"></div>
+                          </div>
+                          <div className="flex gap-1">
+                            <div className="h-8 w-8 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg"></div>
+                            <div className="h-8 w-8 bg-gradient-to-r from-red-200 to-red-100 rounded-lg"></div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="h-3 bg-gradient-to-r from-gray-150 to-gray-100 rounded w-full"></div>
+                          <div className="h-3 bg-gradient-to-r from-gray-150 to-gray-100 rounded w-4/5"></div>
+                          <div className="h-3 bg-gradient-to-r from-gray-150 to-gray-100 rounded w-2/3"></div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-200/50">
+                          <div className="h-3 bg-gradient-to-r from-blue-200 to-blue-100 rounded w-32"></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : notes.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="mb-4">
-                      <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                        <FileText className="size-8 opacity-50" />
+                  <div className="text-center py-12 relative">
+                    {/* Background decoration */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white to-indigo-50/20 rounded-xl -z-10"></div>
+                    <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-blue-400/10 to-purple-400/5 rounded-full blur-2xl -z-10"></div>
+                    
+                    <div className="mb-6">
+                      <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-500/20 to-indigo-600/10 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                          <FileText className="size-6 text-white" />
+                        </div>
                       </div>
                     </div>
-                    <h3 className="text-lg font-medium mb-2 text-foreground">No notes yet</h3>
-                    <p className="text-sm mb-6 max-w-sm mx-auto">
+                    <h3 className="text-xl font-bold mb-3 bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">No notes yet</h3>
+                    <p className="text-gray-600 mb-8 max-w-sm mx-auto leading-relaxed">
                       Start adding notes to capture important details, progress updates, or ideas for this task.
                     </p>
-                    <Button onClick={handleAddNote} size="sm">
+                    <Button 
+                      onClick={handleAddNote} 
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105"
+                    >
                       <Plus className="size-4 mr-2" />
                       Add Your First Note
                     </Button>
@@ -435,7 +472,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
                         note={note}
                         onEdit={handleEditNote}
                         onDelete={handleDeleteNote}
-                        compact={false}
                       />
                     ))}
                   </div>

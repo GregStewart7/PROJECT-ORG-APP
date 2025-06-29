@@ -48,9 +48,9 @@ export function ProjectForm({
   initialData 
 }: ProjectFormProps) {
   const [formData, setFormData] = useState<FormData>({
-    name: initialData?.name || '',
-    description: initialData?.description || '',
-    due_date: initialData?.due_date ? format(new Date(initialData.due_date), 'yyyy-MM-dd') : ''
+    name: '',
+    description: '',
+    due_date: ''
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
@@ -135,15 +135,14 @@ export function ProjectForm({
   }
 
   const handleClose = () => {
-    if (!isSubmitting && !isLoading) {
-      setFormData({
-        name: '',
-        description: '',
-        due_date: ''
-      })
-      setErrors({})
-      onClose()
-    }
+    // Always allow closing since we fixed the disabled form issue
+    setFormData({
+      name: '',
+      description: '',
+      due_date: ''
+    })
+    setErrors({})
+    onClose()
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -155,10 +154,10 @@ export function ProjectForm({
     }
   }
 
-  const isFormDisabled = isSubmitting || isLoading
+  const isFormDisabled = false // Form was being incorrectly disabled
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

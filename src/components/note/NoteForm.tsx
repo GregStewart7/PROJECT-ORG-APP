@@ -1,9 +1,22 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { FileText, X, Plus, Edit, List, ListOrdered, Type, Bold, Italic, Quote } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { 
+  Type, 
+  Bold, 
+  Italic, 
+  List, 
+  ListOrdered, 
+  Quote, 
+  Minus,
+  X,
+  Sparkles,
+  StickyNote,
+  FileText,
+  Check
+} from 'lucide-react'
 
-import { Note, CreateNoteData, UpdateNoteData } from '@/types'
+import { Note } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,56 +32,50 @@ import {
 interface NoteFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateNoteData | UpdateNoteData) => Promise<void>
+  onSubmit: (noteData: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   note?: Note | null
   taskId: string
   isLoading?: boolean
+}
+
+interface FormErrors {
+  content?: string
 }
 
 export function NoteForm({ 
   isOpen, 
   onClose, 
   onSubmit, 
-  note, 
+  note,
   taskId,
-  isLoading = false 
+  isLoading = false
 }: NoteFormProps) {
-  const [content, setContent] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [content, setContent] = useState(note?.content || '')
+  const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const isEditMode = !!note
-
-  // Reset form when dialog opens/closes or note changes
+  // Update form data when note changes (for edit mode)
   useEffect(() => {
-    if (isOpen) {
-      if (note) {
-        // Edit mode - populate with existing note data
-        setContent(note.content)
-      } else {
-        // Create mode - reset to defaults
-        setContent('')
-      }
-      setErrors({})
-      
-      // Focus textarea after a brief delay to ensure dialog is fully rendered
-      setTimeout(() => {
-        textareaRef.current?.focus()
-      }, 100)
+    if (note) {
+      setContent(note.content || '')
+    } else {
+      // Reset form for create mode
+      setContent('')
     }
-  }, [isOpen, note])
+    // Clear any existing errors when switching modes/data
+    setErrors({})
+  }, [note])
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
 
     // Content validation
     if (!content.trim()) {
       newErrors.content = 'Note content is required'
     } else if (content.trim().length < 3) {
       newErrors.content = 'Note content must be at least 3 characters'
-    } else if (content.length > 10000) {
-      newErrors.content = 'Note content must be less than 10,000 characters'
+    } else if (content.trim().length > 2000) {
+      newErrors.content = 'Note content must be less than 2000 characters'
     }
 
     setErrors(newErrors)
@@ -83,28 +90,28 @@ export function NoteForm({
     }
 
     setIsSubmitting(true)
+
     try {
-      const submitData = {
+      const noteData = {
+        task_id: taskId,
         content: content.trim()
       }
 
-      if (isEditMode && note) {
-        await onSubmit({
-          ...submitData,
-          id: note.id
-        } as UpdateNoteData)
-      } else {
-        await onSubmit({
-          ...submitData,
-          task_id: taskId
-        } as CreateNoteData)
-      }
-
-      onClose()
+      await onSubmit(noteData)
+      handleClose()
     } catch (error) {
-      console.error('Form submission error:', error)
+      console.error('Error submitting note:', error)
+      // Error handling will be managed by the parent component
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (!isSubmitting && !isLoading) {
+      setContent('')
+      setErrors({})
+      onClose()
     }
   }
 
@@ -113,312 +120,287 @@ export function NoteForm({
     
     // Clear error when user starts typing
     if (errors.content) {
-      setErrors(prev => ({
-        ...prev,
-        content: ''
-      }))
+      setErrors(prev => ({ ...prev, content: undefined }))
     }
   }
 
-  // Text formatting helpers
-  const insertTextAtCursor = (textToInsert: string, selectInserted = false) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const currentContent = content
-    
-    const newContent = 
-      currentContent.substring(0, start) + 
-      textToInsert + 
-      currentContent.substring(end)
-    
-    setContent(newContent)
-    
-    // Set cursor position after insertion
-    setTimeout(() => {
-      if (selectInserted) {
-        textarea.setSelectionRange(start, start + textToInsert.length)
-      } else {
-        textarea.setSelectionRange(start + textToInsert.length, start + textToInsert.length)
-      }
-      textarea.focus()
-    }, 0)
-  }
-
-  const formatSelectedText = (prefix: string, suffix = '') => {
-    const textarea = textareaRef.current
+  // Formatting helper functions
+  const insertText = (before: string, after: string = '') => {
+    const textarea = document.getElementById('note-content') as HTMLTextAreaElement
     if (!textarea) return
 
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const selectedText = content.substring(start, end)
     
-    if (selectedText) {
-      const formattedText = prefix + selectedText + suffix
-      const newContent = 
-        content.substring(0, start) + 
-        formattedText + 
-        content.substring(end)
-      
-      setContent(newContent)
-      
-      setTimeout(() => {
-        textarea.setSelectionRange(
-          start + prefix.length, 
-          start + prefix.length + selectedText.length
-        )
-        textarea.focus()
-      }, 0)
-    }
+    const newText = content.substring(0, start) + before + selectedText + after + content.substring(end)
+    setContent(newText)
+    
+    // Set cursor position after insertion
+    setTimeout(() => {
+      const newCursorPos = start + before.length + selectedText.length + after.length
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+      textarea.focus()
+    }, 0)
   }
 
-  const addBulletPoint = () => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+  const formatBold = () => insertText('**', '**')
+  const formatItalic = () => insertText('*', '*')
+  const formatBulletList = () => insertText('\n- ', '')
+  const formatNumberedList = () => insertText('\n1. ', '')
+  const formatQuote = () => insertText('\n> ', '')
+  const formatDivider = () => insertText('\n---\n', '')
 
-    const start = textarea.selectionStart
-    const beforeCursor = content.substring(0, start)
-    const needsNewline = beforeCursor.length > 0 && !beforeCursor.endsWith('\n')
+  const getCharacterCountInfo = () => {
+    const length = content.length
+    const maxLength = 2000
+    const percentage = (length / maxLength) * 100
     
-    insertTextAtCursor((needsNewline ? '\n' : '') + '• ')
-  }
-
-  const addNumberedItem = () => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const beforeCursor = content.substring(0, start)
-    const lines = beforeCursor.split('\n')
-    const currentLine = lines[lines.length - 1]
+    let color = 'text-green-600'
+    let bgColor = 'bg-green-500'
     
-    // Find the next number in sequence
-    let nextNumber = 1
-    const numberedItemRegex = /^(\d+)\.\s/
-    
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const match = lines[i].match(numberedItemRegex)
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1
-        break
-      }
+    if (percentage > 90) {
+      color = 'text-red-600'
+      bgColor = 'bg-red-500'
+    } else if (percentage > 75) {
+      color = 'text-yellow-600'
+      bgColor = 'bg-yellow-500'
+    } else if (percentage > 50) {
+      color = 'text-blue-600'
+      bgColor = 'bg-blue-500'
     }
     
-    const needsNewline = beforeCursor.length > 0 && !beforeCursor.endsWith('\n')
-    insertTextAtCursor((needsNewline ? '\n' : '') + `${nextNumber}. `)
-  }
-
-  const getCharacterCount = () => {
     return {
-      current: content.length,
-      remaining: 10000 - content.length,
-      percentage: (content.length / 10000) * 100
+      length,
+      maxLength,
+      percentage,
+      color,
+      bgColor,
+      remaining: maxLength - length
     }
   }
 
-  const charCount = getCharacterCount()
+  const charInfo = getCharacterCountInfo()
+  const isFormDisabled = isSubmitting || isLoading
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {isEditMode ? (
-              <>
-                <Edit className="size-5" />
-                Edit Note
-              </>
-            ) : (
-              <>
-                <Plus className="size-5" />
-                Create New Note
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditMode 
-              ? 'Update your note content below. Use the formatting tools to structure your text.'
-              : 'Add a note to capture important information, thoughts, or progress updates.'
-            }
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px] bg-gradient-to-br from-white to-yellow-50/30 border-yellow-200/30 shadow-2xl backdrop-blur-sm max-h-[80vh] overflow-hidden flex flex-col">
+        {/* Background gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/20 to-orange-50/10 rounded-lg pointer-events-none" />
+        
+        {/* Decorative elements */}
+        <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-yellow-400/10 to-orange-400/5 rounded-full blur-2xl" />
+        
+        <div className="relative z-10 flex flex-col h-full">
+          <DialogHeader className="pb-6 shrink-0">
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-yellow-700 to-orange-700 bg-clip-text text-transparent flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg">
+                <StickyNote className="size-6 text-white" />
+              </div>
+              {note ? 'Edit Note' : 'Add New Note'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 text-base">
+              {note 
+                ? 'Update your note content and formatting.'
+                : 'Add detailed notes to keep track of important information for this task.'
+              }
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-          <div className="space-y-4 flex-1">
-            {/* Content */}
-            <div className="space-y-2 flex-1 flex flex-col">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="content" className="text-sm font-medium">
-                  Note Content *
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 space-y-4 min-h-0">
+              {/* Formatting Toolbar */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Type className="size-4" />
+                  Formatting Tools
                 </Label>
-                <div className="text-xs text-muted-foreground">
-                  {charCount.current.toLocaleString()} / 10,000 characters
+                <div className="flex flex-wrap gap-1 p-3 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatBold}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Bold (**text**)"
+                  >
+                    <Bold className="size-4" />
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatItalic}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Italic (*text*)"
+                  >
+                    <Italic className="size-4" />
+                  </Button>
+                  
+                  <div className="w-px h-6 bg-gray-300 mx-1" />
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatBulletList}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Bullet List (- item)"
+                  >
+                    <List className="size-4" />
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatNumberedList}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Numbered List (1. item)"
+                  >
+                    <ListOrdered className="size-4" />
+                  </Button>
+                  
+                  <div className="w-px h-6 bg-gray-300 mx-1" />
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatQuote}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Quote (> text)"
+                  >
+                    <Quote className="size-4" />
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={formatDivider}
+                    disabled={isFormDisabled}
+                    className="transition-all duration-200 hover:scale-105 hover:bg-gray-100"
+                    title="Horizontal Divider (---)"
+                  >
+                    <Minus className="size-4" />
+                  </Button>
                 </div>
               </div>
 
-              {/* Formatting Toolbar */}
-              <div className="flex items-center gap-1 p-2 bg-muted/30 rounded-md border">
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={addBulletPoint}
-                    disabled={isLoading || isSubmitting}
-                    className="h-7 px-2"
-                    title="Add bullet point"
-                  >
-                    <List className="size-3" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={addNumberedItem}
-                    disabled={isLoading || isSubmitting}
-                    className="h-7 px-2"
-                    title="Add numbered item"
-                  >
-                    <ListOrdered className="size-3" />
-                  </Button>
+              {/* Note Content */}
+              <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+                <Label htmlFor="note-content" className="text-sm font-semibold text-gray-700">
+                  Note Content <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative flex-1 min-h-0">
+                  <Textarea
+                    id="note-content"
+                    placeholder="Enter your note content here...
+
+You can use formatting:
+- **Bold text**
+- *Italic text*
+- Bullet lists with -
+- Numbered lists with 1.
+- > Quotes
+- --- Dividers"
+                    value={content}
+                    onChange={(e) => handleContentChange(e.target.value)}
+                    disabled={isFormDisabled}
+                    className={`h-full min-h-[200px] resize-none bg-white/70 backdrop-blur-sm border-gray-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20 transition-all duration-200 ${
+                      errors.content ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+                    }`}
+                    maxLength={2000}
+                  />
                   
-                  <div className="w-px h-4 bg-border mx-1" />
-                  
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatSelectedText('**', '**')}
-                    disabled={isLoading || isSubmitting}
-                    className="h-7 px-2"
-                    title="Bold text (surround with **)"
-                  >
-                    <Bold className="size-3" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatSelectedText('*', '*')}
-                    disabled={isLoading || isSubmitting}
-                    className="h-7 px-2"
-                    title="Italic text (surround with *)"
-                  >
-                    <Italic className="size-3" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => insertTextAtCursor('> ')}
-                    disabled={isLoading || isSubmitting}
-                    className="h-7 px-2"
-                    title="Add quote"
-                  >
-                    <Quote className="size-3" />
-                  </Button>
+                  {/* Character count indicator overlay */}
+                  <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                    <div className={`text-xs font-medium ${charInfo.color} transition-colors duration-200`}>
+                      {charInfo.length}/{charInfo.maxLength}
+                    </div>
+                    <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 ${charInfo.bgColor}`}
+                        style={{ width: `${Math.min(charInfo.percentage, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="text-xs text-muted-foreground ml-auto">
-                  Formatting helpers
+                {errors.content && (
+                  <p className="text-sm text-red-600 flex items-center gap-1 animate-in slide-in-from-top-1 duration-200">
+                    <X className="size-3" />
+                    {errors.content}
+                  </p>
+                )}
+
+                {/* Character count details */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-4 text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <FileText className="size-3" />
+                      <span>Characters: {charInfo.length}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Check className="size-3" />
+                      <span>Remaining: {charInfo.remaining}</span>
+                    </div>
+                  </div>
+                  
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    charInfo.percentage > 90 
+                      ? 'bg-red-100 text-red-700'
+                      : charInfo.percentage > 75
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {Math.round(charInfo.percentage)}% used
+                  </div>
                 </div>
               </div>
-
-              <Textarea
-                ref={textareaRef}
-                id="content"
-                placeholder="Enter your note content here...
-
-Use the toolbar above or type:
-• Bullet points with '•', '-', or '*'
-• Numbered lists with '1.', '2.', etc.
-• **Bold text** and *italic text*
-• > Quotes"
-                value={content}
-                onChange={(e) => handleContentChange(e.target.value)}
-                className={`min-h-[200px] flex-1 resize-none ${errors.content ? 'border-red-500 focus:border-red-500' : ''}`}
-                disabled={isLoading || isSubmitting}
-                maxLength={10000}
-              />
-              
-              {errors.content && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <FileText className="size-4" />
-                  {errors.content}
-                </p>
-              )}
-
-              {/* Character count progress */}
-              {charCount.percentage > 80 && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className={charCount.remaining < 0 ? 'text-red-600' : 'text-muted-foreground'}>
-                      {charCount.remaining < 0 
-                        ? `${Math.abs(charCount.remaining)} characters over limit`
-                        : `${charCount.remaining} characters remaining`
-                      }
-                    </span>
-                    <span className="text-muted-foreground">
-                      {charCount.percentage.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1">
-                    <div 
-                      className={`h-1 rounded-full transition-all ${
-                        charCount.percentage > 100 
-                          ? 'bg-red-500' 
-                          : charCount.percentage > 90 
-                            ? 'bg-yellow-500' 
-                            : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${Math.min(charCount.percentage, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
 
-          <DialogFooter className="flex gap-2 pt-4 mt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading || isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || isSubmitting || charCount.remaining < 0}
-              className="min-w-[100px]"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  {isEditMode ? 'Updating...' : 'Creating...'}
-                </>
-              ) : (
-                <>
-                  {isEditMode ? (
-                    <>
-                      <Edit className="size-4 mr-2" />
-                      Update Note
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="size-4 mr-2" />
-                      Create Note
-                    </>
-                  )}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter className="gap-3 pt-6 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isFormDisabled}
+                className="bg-white/70 backdrop-blur-sm hover:bg-gray-50 border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isFormDisabled}
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    {note ? 'Updating...' : 'Saving...'}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4" />
+                    {note ? 'Update Note' : 'Save Note'}
+                  </div>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   )
-} 
+}
+
+export default NoteForm 

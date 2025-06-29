@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Edit, Trash2, FolderOpen, Clock } from 'lucide-react'
+import { Calendar, Edit, Trash2, FolderOpen, Clock, AlertTriangle } from 'lucide-react'
 
 import { Project } from '@/types'
 import { 
@@ -15,6 +15,14 @@ import {
   CardAction 
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface ProjectCardProps {
   project: Project
@@ -23,6 +31,7 @@ interface ProjectCardProps {
   onView?: (projectId: string) => void
   isLoading?: boolean
   showActions?: boolean
+  animationDelay?: number
 }
 
 export function ProjectCard({ 
@@ -31,9 +40,11 @@ export function ProjectCard({
   onDelete, 
   onView,
   isLoading = false,
-  showActions = true 
+  showActions = true,
+  animationDelay = 0
 }: ProjectCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const handleEdit = () => {
     if (onEdit && !isLoading) {
@@ -41,15 +52,24 @@ export function ProjectCard({
     }
   }
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
     if (onDelete && !isLoading && !isDeleting) {
       setIsDeleting(true)
       try {
         await onDelete(project.id)
+        setShowDeleteDialog(false)
       } finally {
         setIsDeleting(false)
       }
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false)
   }
 
   const handleView = () => {
@@ -110,13 +130,26 @@ export function ProjectCard({
   }
 
   return (
-    <Card className={`h-full flex flex-col transition-all duration-200 hover:shadow-md ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+    <>
+      <Card 
+        className={`
+          h-full flex flex-col 
+          transition-all duration-300 ease-out
+          hover:shadow-lg hover:-translate-y-1
+          animate-in fade-in slide-in-from-bottom-4
+          ${isLoading ? 'opacity-50 pointer-events-none' : ''}
+        `}
+        style={{ 
+          animationDelay: `${animationDelay}ms`,
+          animationDuration: '600ms'
+        }}
+      >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <FolderOpen className="size-5 text-blue-600 shrink-0" />
             <CardTitle 
-              className="text-lg font-semibold truncate cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-lg font-semibold truncate cursor-pointer hover:text-blue-600 transition-colors duration-200"
               onClick={handleView}
               title={project.name}
             >
@@ -132,7 +165,7 @@ export function ProjectCard({
                   size="icon"
                   onClick={handleEdit}
                   disabled={isLoading}
-                  className="size-8 hover:bg-blue-50 hover:text-blue-600"
+                  className="size-8 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
                   title="Edit project"
                 >
                   <Edit className="size-4" />
@@ -140,9 +173,9 @@ export function ProjectCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleDelete}
+                  onClick={handleDeleteClick}
                   disabled={isLoading || isDeleting}
-                  className="size-8 hover:bg-red-50 hover:text-red-600"
+                  className="size-8 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
                   title="Delete project"
                 >
                   {isDeleting ? (
@@ -155,8 +188,6 @@ export function ProjectCard({
             </CardAction>
           )}
         </div>
-
-
       </CardHeader>
 
       <CardContent className="py-0 flex-1">
@@ -173,7 +204,7 @@ export function ProjectCard({
             </div>
           )}
 
-          {/* Due date badge with plenty of space */}
+          {/* Due date badge */}
           <div className="flex items-center">
             {dueDateInfo ? (
               <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border ${getDueDateColor(dueDateInfo.variant)}`}>
@@ -192,7 +223,7 @@ export function ProjectCard({
           <Button
             onClick={handleView}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 transition-all duration-300 hover:scale-105"
             size="sm"
           >
             <FolderOpen className="size-4 mr-2" />
@@ -200,7 +231,50 @@ export function ProjectCard({
           </Button>
         </div>
       </CardFooter>
-    </Card>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => !open && handleDeleteCancel()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-red-600" />
+              Delete Project
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Are you sure you want to delete <span className="font-semibold">"{project.name}"</span>? 
+              This action cannot be undone and will permanently remove the project and all its tasks.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleDeleteCancel}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Deleting...
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="size-4 mr-2" />
+                  Delete Project
+                </>
+              )}
+            </Button>
+                    </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

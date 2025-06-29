@@ -1,322 +1,202 @@
 'use client'
 
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { FolderOpen, Eye, EyeOff, AlertCircle } from "lucide-react"
-import { useRedirectIfAuthenticated } from "@/contexts/AuthContext"
-import { authValidation, signIn } from "@/lib/auth"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Eye, EyeOff, Mail, Lock, Crown, ArrowRight, Shield, Zap } from 'lucide-react'
+
+import { signIn } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function LoginPage() {
-  // Redirect to projects if user is already authenticated
-  const { loading } = useRedirectIfAuthenticated()
   const router = useRouter()
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // Error state
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-    general: ''
-  })
-  const [touched, setTouched] = useState({
-    email: false,
-    password: false
-  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Validation function
-  const validateField = (name: string, value: string) => {
-    switch (name) {
-      case 'email':
-        return authValidation.email(value)
-      case 'password':
-        return authValidation.password(value)
-      default:
-        return null
-    }
-  }
-
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-
-    // Clear general error when user starts typing
-    if (errors.general) {
-      setErrors(prev => ({ ...prev, general: '' }))
-    }
-
-    // Validate field if it has been touched
-    if (touched[name as keyof typeof touched]) {
-      const error = validateField(name, value)
-      setErrors(prev => ({
-        ...prev,
-        [name]: error || ''
-      }))
-    }
-  }
-
-  // Handle field blur (when user leaves the field)
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setTouched(prev => ({ ...prev, [name]: true }))
-    
-    const error = validateField(name, value)
-    setErrors(prev => ({
-      ...prev,
-      [name]: error || ''
-    }))
-  }
-
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    
-    // Clear previous errors
-    setErrors({
-      email: '',
-      password: '',
-      general: ''
-    })
+    setLoading(true)
+    setError(null)
 
-    // Mark all fields as touched
-    setTouched({
-      email: true,
-      password: true
-    })
+    const result = await signIn({ email, password })
 
-    // Validate all fields
-    const emailError = authValidation.email(formData.email)
-    const passwordError = authValidation.password(formData.password)
-
-    // Set field errors
-    const newErrors = {
-      email: emailError || '',
-      password: passwordError || '',
-      general: ''
+    if (result.success) {
+      router.push('/projects')
+    } else {
+      setError(result.error || 'Failed to sign in')
     }
 
-    // Check if there are any validation errors
-    const hasErrors = Object.values(newErrors).some(error => error !== '')
-    
-    if (hasErrors) {
-      setErrors(newErrors)
-      setIsSubmitting(false)
-      return
-    }
-
-    try {
-      // Call Supabase signin
-      const result = await signIn({
-        email: formData.email,
-        password: formData.password
-      })
-
-      if (result.success && result.data) {
-        // Successful login - use enhanced redirect logic
-        const searchParams = new URLSearchParams(window.location.search)
-        const redirectedFrom = searchParams.get('redirectedFrom')
-        const originalParams = searchParams.get('originalParams')
-        
-        let targetUrl = '/projects' // Default redirect
-        
-        // If there's a valid redirect destination, use it
-        if (redirectedFrom) {
-          const protectedRoutes = ['/projects', '/dashboard', '/profile', '/settings']
-          
-          if (protectedRoutes.some(route => redirectedFrom.startsWith(route))) {
-            const redirectUrl = new URL(redirectedFrom, window.location.origin)
-            
-            // Restore original search params
-            if (originalParams) {
-              const params = new URLSearchParams(originalParams)
-              params.forEach((value, key) => {
-                redirectUrl.searchParams.set(key, value)
-              })
-            }
-            
-            targetUrl = redirectUrl.pathname + redirectUrl.search
-          }
-        }
-        
-        router.push(targetUrl)
-      } else {
-        // Handle login error
-        setErrors(prev => ({
-          ...prev,
-          general: result.error || 'An unexpected error occurred during login'
-        }))
-      }
-    } catch (error) {
-      // Handle unexpected errors
-      setErrors(prev => ({
-        ...prev,
-        general: 'An unexpected error occurred. Please try again.'
-      }))
-      console.error('Login error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <FolderOpen className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">ProjectHub</span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
 
-        {/* Login Card */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>
-              Sign in to your account to continue managing your projects
+      <div className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-2xl">
+          <CardHeader className="text-center pb-8">
+            {/* ProjectHub Branding */}
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg">
+                  <Crown className="size-8 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
+                  ProjectHub
+                </h1>
+                <p className="text-xs text-gray-600 font-medium">Professional Edition</p>
+              </div>
+            </div>
+
+            <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome Back
+            </CardTitle>
+            <CardDescription className="text-gray-600 text-lg">
+              Sign in to your professional workspace
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* General Error Message */}
-              {errors.general && (
-                <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{errors.general}</span>
-                </div>
-              )}
 
-              {/* Email Field */}
+          <CardContent>
+            {error && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl animate-in slide-in-from-top-2 duration-300">
+                <p className="text-red-800 font-medium text-center">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  required
-                  disabled={isSubmitting}
-                  className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.email}
-                  </p>
-                )}
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                  Email Address
+                </Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="size-5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                  </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    required
+                    className="pl-10 pr-4 h-12 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${email && email.includes('@') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  </div>
+                </div>
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link 
-                    href="/auth/forgot-password" 
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                  Password
+                </Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="size-5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                  </div>
                   <Input
                     id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
                     required
-                    disabled={isSubmitting}
-                    className={`pr-10 ${errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className="pl-10 pr-12 h-12 bg-white/70 backdrop-blur-sm border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isSubmitting}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-blue-600 transition-colors duration-200"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      <EyeOff className="size-5 text-gray-400" />
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="size-5 text-gray-400" />
                     )}
-                  </Button>
+                  </button>
+                  <div className="absolute inset-y-0 right-10 pr-3 flex items-center">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${password.length >= 6 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  </div>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.password}
-                  </p>
-                )}
               </div>
 
-              {/* Submit Button */}
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isSubmitting}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     Signing In...
-                  </>
+                  </div>
                 ) : (
-                  'Sign In'
+                  <div className="flex items-center gap-2">
+                    <Shield className="size-5" />
+                    Sign In
+                    <ArrowRight className="size-5" />
+                  </div>
                 )}
               </Button>
             </form>
           </CardContent>
-        </Card>
 
-        {/* Footer Links */}
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link 
-              href="/auth/signup" 
-              className="text-primary hover:underline font-medium"
-            >
-              Sign up here
-            </Link>
-          </p>
-          <p className="text-xs text-muted-foreground mt-4">
-            <Link href="/" className="hover:underline">
-              ← Back to home
-            </Link>
-          </p>
-        </div>
+          <CardFooter className="pt-6">
+            <div className="w-full space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white/80 text-gray-600 font-medium">New to ProjectHub?</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/50 hover:shadow-md transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Zap className="size-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">Pro Features</span>
+                  </div>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200/50 hover:shadow-md transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Shield className="size-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-900">Secure</span>
+                  </div>
+                </Card>
+              </div>
+
+              <Link
+                href="/auth/signup"
+                className="block w-full text-center py-3 px-4 bg-white/70 backdrop-blur-sm hover:bg-white/90 border border-gray-200 rounded-xl font-medium text-gray-700 hover:text-blue-600 transition-all duration-300 hover:scale-105 hover:shadow-md"
+              >
+                Create Your Account
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   )
