@@ -11,7 +11,7 @@ function PageSkeleton() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40">
       <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-      <span className="sr-only">Loading ProjectHub...</span>
+              <span className="sr-only">Loading TaskFlow...</span>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col">
               <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent">
-                ProjectHub
+                TaskFlow
               </span>
               <span className="text-xs text-blue-600 font-medium opacity-80">
                 Professional Edition
@@ -275,7 +275,7 @@ export default function Home() {
               Built with ❤️ for project management enthusiasts
             </p>
             <p className="text-xs">
-              © 2024 ProjectHub Professional Edition. Open source project management platform.
+              © 2024 TaskFlow Professional Edition. Open source project management platform.
             </p>
           </div>
         </footer>

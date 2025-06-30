@@ -28,7 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ProjectHub - Professional Project Management",
+  title: "TaskFlow - Professional Project Management",
   description: "Professional project management software for organizing tasks, notes, and workflows with real-time synchronization",
 };
 

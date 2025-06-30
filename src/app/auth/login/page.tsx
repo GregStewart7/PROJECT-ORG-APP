@@ -86,9 +86,9 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
         <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-2xl">
           <CardHeader className="text-center pb-8">
-            {/* ProjectHub Branding - enhanced for accessibility */}
+            {/* TaskFlow Branding - enhanced for accessibility */}
             <div className="flex items-center justify-center gap-3 mb-4" role="banner">
-              <div className="relative" aria-label="ProjectHub logo">
+              <div className="relative" aria-label="TaskFlow logo">
                 <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg">
                   <Crown className="size-8 text-white" aria-hidden="true" />
                 </div>
@@ -98,7 +98,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-                  ProjectHub
+                  TaskFlow
                 </h1>
                 <p className="text-xs text-gray-600 font-medium" aria-label="Professional Edition">Professional Edition</p>
               </div>
@@ -253,7 +253,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white/80 text-gray-600 font-medium">New to ProjectHub?</span>
+                  <span className="px-4 bg-white/80 text-gray-600 font-medium">New to TaskFlow?</span>
                 </div>
               </div>
 
@@ -282,7 +282,7 @@ export default function LoginPage() {
               <Link
                 href="/auth/signup"
                 className="block w-full text-center py-3 px-4 bg-white/70 backdrop-blur-sm hover:bg-white/90 border border-gray-200 rounded-xl font-medium text-gray-700 hover:text-blue-600 transition-all duration-300 hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2"
-                aria-label="Create a new ProjectHub account"
+                aria-label="Create a new TaskFlow account"
               >
                 Create Your Account
               </Link>

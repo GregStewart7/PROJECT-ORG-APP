@@ -1,6 +1,6 @@
 # Database Setup
 
-This directory contains the database schema and setup instructions for the Personal Project Management Software.
+This directory contains the database schema and setup instructions for TaskFlow.
 
 ## Schema Overview
 

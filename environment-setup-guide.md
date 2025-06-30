@@ -31,7 +31,7 @@ This project requires specific environment variables to be configured for Supaba
 Create a file named `.env.local` in your project root:
 
 ```bash
-# In project-management-app/
+# In taskflow/
 touch .env.local
 ```
 

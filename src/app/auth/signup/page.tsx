@@ -252,7 +252,7 @@ export default function SignupPage() {
       <div className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
         <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-2xl">
           <CardHeader className="text-center pb-8">
-            {/* ProjectHub Branding */}
+            {/* TaskFlow Branding */}
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="relative">
                 <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg">
@@ -264,7 +264,7 @@ export default function SignupPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-                  ProjectHub
+                  TaskFlow
                 </h1>
                 <p className="text-xs text-gray-600 font-medium">Professional Edition</p>
               </div>
@@ -433,7 +433,7 @@ export default function SignupPage() {
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white/80 text-gray-600 font-medium">Why choose ProjectHub?</span>
+                  <span className="px-4 bg-white/80 text-gray-600 font-medium">Why choose TaskFlow?</span>
                 </div>
               </div>
 

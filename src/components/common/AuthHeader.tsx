@@ -63,7 +63,7 @@ export function AuthHeader() {
           </div>
           <div className="flex flex-col">
             <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent group-hover:from-blue-700 group-hover:to-indigo-800 transition-all duration-200">
-              ProjectHub
+              TaskFlow
             </span>
             <span className="text-xs text-blue-600 font-medium opacity-80">
               Professional Edition
