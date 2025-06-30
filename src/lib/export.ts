@@ -470,7 +470,7 @@ export async function generatePDF(data: ExportData): Promise<string> {
     const { fontSize = 10, fontStyle = 'normal', maxWidth = contentWidth, color = colors.text, align = 'left' } = options
     
     doc.setFontSize(fontSize)
-    doc.setFont('helvetica', fontStyle as any)
+    doc.setFont('helvetica', fontStyle as 'normal' | 'bold' | 'italic' | 'bolditalic')
     setTextColor(color)
     
     const lines = doc.splitTextToSize(text, maxWidth)
@@ -482,7 +482,7 @@ export async function generatePDF(data: ExportData): Promise<string> {
         doc.text(line, xPos, y + (i * fontSize * 0.4))
       })
     } else {
-      doc.text(lines, x, y, { align: align as any })
+      doc.text(lines, x, y, { align: align as 'left' | 'center' | 'right' })
     }
     
     return y + (lines.length * fontSize * 0.4) + 2

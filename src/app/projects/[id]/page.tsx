@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, FileText, Target, Zap, CheckCircle2, AlertCircle, ArrowUpDown, Flag } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { getProject, getTasksByProject, createTask, updateTask, deleteTask } from '@/lib/database'
-import { Project, Task } from '@/types'
+import { Project, Task, CreateTaskData, UpdateTaskData } from '@/types'
 import { TaskCard } from '@/components/task/TaskCard'
 import { TaskForm } from '@/components/task/TaskForm'
 import { TaskDetailModal } from '@/components/task/TaskDetailModal'
@@ -63,7 +63,7 @@ export default function ProjectDetailPage() {
     if (user && projectId) {
       loadData()
     }
-  }, [user, projectId])
+  }, [user, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Trigger entrance animations
@@ -75,7 +75,7 @@ export default function ProjectDetailPage() {
     }
   }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [projectResult, tasksResult] = await Promise.all([
@@ -103,9 +103,9 @@ export default function ProjectDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId])
 
-  const handleTaskSubmit = async (data: any) => {
+  const handleTaskSubmit = async (data: CreateTaskData | UpdateTaskData) => {
     try {
       setTaskFormLoading(true)
       

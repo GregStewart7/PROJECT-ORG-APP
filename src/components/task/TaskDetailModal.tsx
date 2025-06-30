@@ -368,7 +368,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onTaskUpdate }: TaskDet
                     {notes.length > 1 && (
                       <div className="flex items-center gap-2">
                         <ArrowUpDown className="size-4 text-muted-foreground" />
-                        <Select value={noteSortBy} onValueChange={(value: any) => setNoteSortBy(value)}>
+                                                  <Select value={noteSortBy} onValueChange={(value: 'newest' | 'oldest' | 'updated' | 'alphabetical') => setNoteSortBy(value)}>
                           <SelectTrigger className="w-40">
                             <SelectValue />
                           </SelectTrigger>

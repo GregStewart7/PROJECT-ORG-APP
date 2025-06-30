@@ -628,13 +628,13 @@ export async function getTask(taskId: string): Promise<ApiResponse<Task>> {
     }
 
     // Remove the projects relation data from response
-    const { projects, ...taskData } = data as any
+    const { projects, ...taskData } = data as Record<string, unknown>
     // Prevent unused variable warning
     void projects
     
     return {
       success: true,
-      data: taskData as Task
+      data: taskData as unknown as Task
     }
   } catch (error) {
     console.error('Unexpected error fetching task:', error)
@@ -702,11 +702,11 @@ export async function getTasks(filters?: TaskFilters): Promise<ApiResponse<Task[
     }
 
     // Remove the projects relation data from response
-    const tasks = (data || []).map((item: any) => {
+    const tasks = (data || []).map((item: Record<string, unknown>) => {
       const { projects, ...taskData } = item
       // Prevent unused variable warning
       void projects
-      return taskData as Task
+      return taskData as unknown as Task
     })
 
     return {
@@ -1116,11 +1116,11 @@ export async function getUpcomingTasks(daysAhead: number = 7): Promise<ApiRespon
     }
 
     // Remove the projects relation data from response
-    const tasks = (data || []).map((item: Record<string, any>) => {
+    const tasks = (data || []).map((item: Record<string, unknown>) => {
       const { projects, ...taskData } = item
       // Prevent unused variable warning
       void projects
-      return taskData as Task
+      return taskData as unknown as Task
     })
 
     return {
@@ -1327,13 +1327,13 @@ export async function getNote(noteId: string): Promise<ApiResponse<Note>> {
     }
 
     // Remove the tasks relation data from response
-    const { tasks, ...noteData } = data as any
+    const { tasks, ...noteData } = data as Record<string, unknown>
     // Prevent unused variable warning
     void tasks
     
     return {
       success: true,
-      data: noteData as Note
+      data: noteData as unknown as Note
     }
   } catch (error) {
     console.error('Unexpected error fetching note:', error)
@@ -1401,11 +1401,11 @@ export async function getNotes(filters?: NoteFilters): Promise<ApiResponse<Note[
     }
 
     // Remove the tasks relation data from response
-    const notes = (data || []).map((item: Record<string, any>) => {
+    const notes = (data || []).map((item: Record<string, unknown>) => {
       const { tasks, ...noteData } = item
       // Prevent unused variable warning
       void tasks
-      return noteData as Note
+      return noteData as unknown as Note
     })
 
     return {
@@ -1821,11 +1821,11 @@ export async function getRecentNotes(daysBack: number = 7): Promise<ApiResponse<
     }
 
     // Remove the tasks relation data from response
-    const notes = (data || []).map((item: Record<string, any>) => {
+    const notes = (data || []).map((item: Record<string, unknown>) => {
       const { tasks, ...noteData } = item
       // Prevent unused variable warning
       void tasks
-      return noteData as Note
+      return noteData as unknown as Note
     })
 
     return {
