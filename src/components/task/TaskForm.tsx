@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Target, X, Check, AlertCircle, Clock, CheckCircle2, Sparkles, CheckCircle, Info } from 'lucide-react'
+import { Calendar, Target, AlertCircle, Clock, CheckCircle2, CheckCircle, Info } from 'lucide-react'
 
 import { Task } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Dialog, 

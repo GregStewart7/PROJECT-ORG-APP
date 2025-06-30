@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, FolderPlus, BarChart3, Target, Calendar, CheckCircle2, Clock, TrendingUp, Activity, Sparkles, RefreshCw, Wifi, WifiOff, AlertTriangle, X } from 'lucide-react'
+import { Plus, FolderPlus, BarChart3, Target, CheckCircle2, Clock, TrendingUp, Activity, Sparkles, RefreshCw, WifiOff, AlertTriangle, X } from 'lucide-react'
 
 import { Project } from '@/types'
 import { getProjects, createProject, updateProject, deleteProject } from '@/lib/database'
 import { useAuth } from '@/contexts/AuthContext'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { ProjectCard } from '@/components/project/ProjectCard'
 import { ProjectForm } from '@/components/project/ProjectForm'
 import { AuthHeader } from '@/components/common/AuthHeader'
@@ -40,7 +40,9 @@ export default function ProjectsPage() {
   const [isRetrying, setIsRetrying] = useState(false)
 
   // Enhanced error classification
-  const classifyError = (error: any, retryCount: number = 0): ErrorState => {
+  const classifyError = (error: unknown, retryCount: number = 0): ErrorState => {
+    const err = error as Error & { status?: number }
+    
     if (!navigator.onLine) {
       return {
         message: 'No internet connection. Please check your network and try again.',
@@ -50,7 +52,7 @@ export default function ProjectsPage() {
       }
     }
 
-    if (error?.message?.includes('fetch') || error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
+    if (err?.message?.includes('fetch') || err?.message?.includes('network') || err?.message?.includes('Failed to fetch')) {
       return {
         message: 'Connection failed. Please check your internet connection and try again.',
         type: 'network',
@@ -59,7 +61,7 @@ export default function ProjectsPage() {
       }
     }
 
-    if (error?.status === 401 || error?.message?.includes('unauthorized')) {
+    if (err?.status === 401 || err?.message?.includes('unauthorized')) {
       return {
         message: 'Your session has expired. Please log in again.',
         type: 'validation',
@@ -68,16 +70,16 @@ export default function ProjectsPage() {
       }
     }
 
-    if (error?.status === 403) {
+    if (err?.status === 403) {
       return {
-        message: 'You don\'t have permission to perform this action.',
+        message: 'You don&apos;t have permission to perform this action.',
         type: 'validation',
         recoverable: false,
         retryCount
       }
     }
 
-    if (error?.status === 429) {
+    if (err?.status === 429) {
       return {
         message: 'Too many requests. Please wait a moment before trying again.',
         type: 'server',
@@ -86,7 +88,7 @@ export default function ProjectsPage() {
       }
     }
 
-    if (error?.status >= 500) {
+    if (err?.status && err.status >= 500) {
       return {
         message: 'Server error. Our team has been notified. Please try again in a few minutes.',
         type: 'server',
@@ -95,7 +97,7 @@ export default function ProjectsPage() {
       }
     }
 
-    if (error?.status === 404) {
+    if (err?.status === 404) {
       return {
         message: 'The requested resource was not found.',
         type: 'validation',
@@ -105,7 +107,7 @@ export default function ProjectsPage() {
     }
 
     return {
-      message: error?.message || 'An unexpected error occurred. Please try again.',
+      message: err?.message || 'An unexpected error occurred. Please try again.',
       type: 'unknown',
       recoverable: true,
       retryCount
@@ -113,7 +115,7 @@ export default function ProjectsPage() {
   }
 
   // Enhanced retry mechanism
-  const retryWithBackoff = async (operation: () => Promise<any>, maxRetries: number = 3) => {
+  const retryWithBackoff = async (operation: () => Promise<unknown>, maxRetries: number = 3) => {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await operation()
@@ -154,12 +156,12 @@ export default function ProjectsPage() {
           throw customError
         }
         return result
-      })
+      }) as { data: Project[] }
       
       if (response.data) {
         setProjects(response.data)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading projects:', err)
       const errorState = classifyError(err)
       setError(errorState)
@@ -240,7 +242,7 @@ export default function ProjectsPage() {
       setIsCreating(true)
       setError(null)
       
-      const response = await retryWithBackoff(async () => {
+      await retryWithBackoff(async () => {
         const result = await createProject({
           name: data.name,
           description: data.description,
@@ -257,7 +259,7 @@ export default function ProjectsPage() {
       
       await loadProjects()
       showSuccess('🎉 Project created successfully!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating project:', err)
       const errorState = classifyError(err)
       setError(errorState)
@@ -272,7 +274,7 @@ export default function ProjectsPage() {
     try {
       setError(null)
       
-      const response = await retryWithBackoff(async () => {
+      await retryWithBackoff(async () => {
         const result = await updateProject({
         id: editingProject.id,
           name: data.name,
@@ -291,7 +293,7 @@ export default function ProjectsPage() {
       await loadProjects()
       setEditingProject(null)
       showSuccess('✅ Project updated successfully!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating project:', err)
       const errorState = classifyError(err)
       setError(errorState)
@@ -302,7 +304,7 @@ export default function ProjectsPage() {
     try {
       setError(null)
       
-      const response = await retryWithBackoff(async () => {
+      await retryWithBackoff(async () => {
         const result = await deleteProject(projectId)
         
         if (!result.success) {
@@ -315,7 +317,7 @@ export default function ProjectsPage() {
       
       await loadProjects()
       showSuccess('🗑️ Project deleted successfully!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting project:', err)
       const errorState = classifyError(err)
       setError(errorState)
@@ -444,7 +446,7 @@ export default function ProjectsPage() {
                   <WifiOff className="size-4 text-orange-700" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-orange-800 font-medium">You're currently offline</p>
+                  <p className="text-orange-800 font-medium">You&apos;re currently offline</p>
                   <p className="text-orange-600 text-sm">Some features may not be available until you reconnect.</p>
                 </div>
               </div>

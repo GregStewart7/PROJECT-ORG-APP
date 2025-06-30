@@ -628,7 +628,9 @@ export async function getTask(taskId: string): Promise<ApiResponse<Task>> {
     }
 
     // Remove the projects relation data from response
-    const { projects: _, ...taskData } = data as Record<string, any>
+    const { projects, ...taskData } = data as any
+    // Prevent unused variable warning
+    void projects
     
     return {
       success: true,
@@ -700,8 +702,10 @@ export async function getTasks(filters?: TaskFilters): Promise<ApiResponse<Task[
     }
 
     // Remove the projects relation data from response
-    const tasks = (data || []).map((item: Record<string, any>) => {
-      const { projects: _, ...taskData } = item
+    const tasks = (data || []).map((item: any) => {
+      const { projects, ...taskData } = item
+      // Prevent unused variable warning
+      void projects
       return taskData as Task
     })
 
@@ -1113,7 +1117,9 @@ export async function getUpcomingTasks(daysAhead: number = 7): Promise<ApiRespon
 
     // Remove the projects relation data from response
     const tasks = (data || []).map((item: Record<string, any>) => {
-      const { projects: _, ...taskData } = item
+      const { projects, ...taskData } = item
+      // Prevent unused variable warning
+      void projects
       return taskData as Task
     })
 
@@ -1321,7 +1327,9 @@ export async function getNote(noteId: string): Promise<ApiResponse<Note>> {
     }
 
     // Remove the tasks relation data from response
-    const { tasks: _, ...noteData } = data as Record<string, any>
+    const { tasks, ...noteData } = data as any
+    // Prevent unused variable warning
+    void tasks
     
     return {
       success: true,
@@ -1394,7 +1402,9 @@ export async function getNotes(filters?: NoteFilters): Promise<ApiResponse<Note[
 
     // Remove the tasks relation data from response
     const notes = (data || []).map((item: Record<string, any>) => {
-      const { tasks: _, ...noteData } = item
+      const { tasks, ...noteData } = item
+      // Prevent unused variable warning
+      void tasks
       return noteData as Note
     })
 
@@ -1812,7 +1822,9 @@ export async function getRecentNotes(daysBack: number = 7): Promise<ApiResponse<
 
     // Remove the tasks relation data from response
     const notes = (data || []).map((item: Record<string, any>) => {
-      const { tasks: _, ...noteData } = item
+      const { tasks, ...noteData } = item
+      // Prevent unused variable warning
+      void tasks
       return noteData as Note
     })
 

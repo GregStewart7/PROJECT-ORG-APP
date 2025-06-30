@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "security:cleanup": "node scripts/cleanup-sensitive-data.js",
+    "precommit": "npm run security:cleanup && npm run lint"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",

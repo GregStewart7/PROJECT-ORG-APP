@@ -12,7 +12,6 @@ import {
   FileText, 
   Plus,
   Edit,
-  Trash2,
   AlertCircle,
   ArrowUpDown,
   ArrowUp,

@@ -13,10 +13,10 @@ This project requires specific environment variables to be configured for Supaba
 - **Where to find**: Supabase Dashboard → Settings → API → Project URL
 
 ### 2. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- **Purpose**: Your Supabase anonymous/public key
-- **Format**: JWT token starting with `eyJ`
-- **Example**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-- **Where to find**: Supabase Dashboard → Settings → API → Project API keys → anon/public
+- **Purpose**: Your Supabase anonymous/public key or publishable key
+- **Format**: JWT token starting with `eyJ` (legacy) OR publishable key starting with `sb_publishable_` (new)
+- **Example**: `sb_publishable_b_0ZLnCn3EWFrNldDEnlLA_Z-eW5gZn` OR `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+- **Where to find**: Supabase Dashboard → Settings → API → New API Keys (recommended) or legacy API keys
 
 ## Optional Environment Variables
 
@@ -43,7 +43,7 @@ Copy this template into your `.env.local` file:
 # REQUIRED: Supabase Configuration
 # ==========================================
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-actual-key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_your-publishable-key
 
 # ==========================================
 # OPTIONAL: Additional Configuration

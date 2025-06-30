@@ -64,6 +64,6 @@ Once the schema is set up:
 Make sure your `.env.local` file contains:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://tydmubjwtoioutylauoy.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ``` 

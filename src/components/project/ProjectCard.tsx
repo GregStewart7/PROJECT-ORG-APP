@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { format } from 'date-fns'
 import { Calendar, Edit, Trash2, FolderOpen, Clock, AlertTriangle } from 'lucide-react'
 
@@ -9,7 +9,6 @@ import {
   Card, 
   CardHeader, 
   CardTitle, 
-  CardDescription, 
   CardContent, 
   CardFooter,
   CardAction 
@@ -347,7 +346,7 @@ export function ProjectCard({
               className="text-left"
               id="delete-dialog-description"
             >
-              Are you sure you want to delete <span className="font-semibold">"{project.name}"</span>? 
+              Are you sure you want to delete <span className="font-semibold">&quot;{project.name}&quot;</span>? 
               This action cannot be undone and will permanently remove the project and all its tasks.
             </DialogDescription>
           </DialogHeader>

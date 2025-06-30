@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, Users, TrendingUp, FileText, Target, Zap, CheckCircle2, AlertCircle, ArrowUpDown, Flag } from 'lucide-react'
+import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, FileText, Target, Zap, CheckCircle2, AlertCircle, ArrowUpDown, Flag } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { getProject, getTasksByProject, createTask, updateTask, deleteTask } from '@/lib/database'
@@ -14,10 +14,7 @@ import { ExportButton } from '@/components/common/ExportButton'
 import { AuthHeader } from '@/components/common/AuthHeader'
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
-  CardContent, 
-  CardDescription 
+  CardContent 
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
@@ -343,7 +340,7 @@ export default function ProjectDetailPage() {
               <AlertCircle className="size-12 text-red-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Project Not Found</h2>
-            <p className="text-gray-600 mb-8">The project you're looking for doesn't exist or you don't have access to it.</p>
+            <p className="text-gray-600 mb-8">The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
             <Button
               onClick={() => router.push('/projects')}
               className="bg-blue-600 hover:bg-blue-700 text-white"

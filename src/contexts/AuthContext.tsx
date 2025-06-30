@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { AuthUser, getCurrentUser, onAuthStateChange } from '@/lib/auth'
+import { AuthUser, onAuthStateChange } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {

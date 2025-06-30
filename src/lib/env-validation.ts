@@ -29,11 +29,16 @@ function isValidUrl(url: string): boolean {
 }
 
 /**
- * Validates that a string looks like a Supabase anon key
+ * Validates that a string looks like a Supabase anon key or publishable key
  */
 function isValidSupabaseKey(key: string): boolean {
-  // Supabase anon keys are typically JWT tokens starting with 'eyJ'
-  return key.length > 50 && key.startsWith('eyJ')
+  // Supabase keys can be:
+  // 1. Legacy anon keys (JWT tokens starting with 'eyJ')
+  // 2. New publishable keys (starting with 'sb_publishable_')
+  const isLegacyAnonKey = key.length > 50 && key.startsWith('eyJ')
+  const isPublishableKey = key.startsWith('sb_publishable_') && key.length > 20
+  
+  return isLegacyAnonKey || isPublishableKey
 }
 
 /**
@@ -68,7 +73,7 @@ export function validateEnvironment(): ValidationResult {
 
       case 'NEXT_PUBLIC_SUPABASE_ANON_KEY':
         if (!isValidSupabaseKey(value)) {
-          errors.push(`Invalid Supabase key format for ${key}`)
+          errors.push(`Invalid Supabase key format for ${key} - should start with 'eyJ' (legacy) or 'sb_publishable_' (new)`)
         }
         break
     }
@@ -109,7 +114,7 @@ export function validateEnvironmentOrThrow(): void {
       '',
       '📋 Required Environment Variables:',
       '  • NEXT_PUBLIC_SUPABASE_URL     - Your Supabase project URL',
-      '  • NEXT_PUBLIC_SUPABASE_ANON_KEY - Your Supabase anonymous key',
+      '  • NEXT_PUBLIC_SUPABASE_ANON_KEY - Your Supabase anon/publishable key',
       '',
       '💡 How to Fix:',
       '  1. Create a .env.local file in your project root',
@@ -118,7 +123,7 @@ export function validateEnvironmentOrThrow(): void {
       '',
       '📖 Example .env.local:',
       '  NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co',
-      '  NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      '  NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_... (or eyJhbGciOiJIUzI1NiI... for legacy)',
       '',
       '🔗 Get these values from: https://app.supabase.com/project/your-project/settings/api'
     ].join('\n')

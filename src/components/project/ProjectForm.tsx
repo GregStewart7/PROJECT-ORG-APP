@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, FolderPlus, X, Check, AlertCircle, CheckCircle, Info } from 'lucide-react'
+import { Calendar, FolderPlus, AlertCircle, CheckCircle, Info } from 'lucide-react'
 
 import { Project } from '@/types'
 import { Button } from '@/components/ui/button'

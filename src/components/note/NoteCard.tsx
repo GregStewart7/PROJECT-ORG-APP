@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
-import { Calendar, Edit, Trash2, ChevronDown, ChevronUp, StickyNote, Clock, User, Sparkles, AlertTriangle } from 'lucide-react'
+import { Calendar, Edit, Trash2, ChevronDown, ChevronUp, StickyNote, Clock, AlertTriangle } from 'lucide-react'
 
 import { Note } from '@/types'
 import { 
@@ -80,7 +80,19 @@ export function NoteCard({
     }
 
     const formatInlineMarkdown = (text: string) => {
-      return text
+      // Escape HTML to prevent XSS attacks
+      const escapeHtml = (unsafe: string) => {
+        return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;")
+      }
+      
+      // First escape all HTML, then apply safe markdown formatting
+      const escaped = escapeHtml(text)
+      return escaped
         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>')
     }

@@ -17,7 +17,7 @@ function PageSkeleton() {
 }
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return <PageSkeleton />;

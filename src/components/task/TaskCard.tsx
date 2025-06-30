@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { format } from 'date-fns'
-import { Calendar, CheckCircle2, Circle, Edit, Trash2, Clock, FileText, StickyNote, AlertCircle, AlertTriangle } from 'lucide-react'
+import { Calendar, CheckCircle2, Circle, Edit, Trash2, Clock, StickyNote, AlertCircle, AlertTriangle } from 'lucide-react'
 
 import { Task } from '@/types'
 import { 
   Card, 
   CardHeader, 
   CardTitle, 
-  CardDescription, 
   CardContent, 
   CardFooter,
   CardAction 
@@ -474,7 +473,7 @@ export function TaskCard({
                 className="text-sm text-gray-700 mb-2"
                 id="delete-dialog-description"
               >
-                Are you sure you want to delete <span className="font-semibold text-gray-900">"{task.name}"</span>?
+                Are you sure you want to delete <span className="font-semibold text-gray-900">&quot;{task.name}&quot;</span>?
               </p>
               <p className="text-xs text-gray-500">
                 All notes and progress associated with this task will be permanently removed.

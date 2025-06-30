@@ -15,6 +15,7 @@ export interface SignInData {
 
 export interface AuthUser extends User {
   // Add any additional user properties if needed
+  email_confirmed?: boolean
 }
 
 /**
