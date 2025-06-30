@@ -1210,6 +1210,13 @@ export async function createNote(noteData: CreateNoteData): Promise<ApiResponse<
       }
     }
 
+    if (!noteData.title || noteData.title.trim() === '') {
+      return {
+        success: false,
+        error: 'Note title is required'
+      }
+    }
+
     if (!noteData.task_id) {
       return {
         success: false,
@@ -1229,6 +1236,7 @@ export async function createNote(noteData: CreateNoteData): Promise<ApiResponse<
     // Prepare note data
     const newNote = {
       task_id: noteData.task_id,
+      title: noteData.title.trim(),
       content: noteData.content.trim(),
     }
 
@@ -1488,6 +1496,14 @@ export async function updateNote(updateData: UpdateNoteData): Promise<ApiRespons
       }
     }
 
+    // Validate title if provided
+    if (updateData.title !== undefined && updateData.title.trim() === '') {
+      return {
+        success: false,
+        error: 'Note title cannot be empty'
+      }
+    }
+
     // Validate content if provided
     if (updateData.content !== undefined && updateData.content.trim() === '') {
       return {
@@ -1510,11 +1526,15 @@ export async function updateNote(updateData: UpdateNoteData): Promise<ApiRespons
     
     // Clean up the update data
     const cleanUpdates: Partial<{
+      title: string
       content: string
       task_id: string
       updated_at: string
     }> = {}
     
+    if (noteUpdates.title !== undefined) {
+      cleanUpdates.title = noteUpdates.title.trim()
+    }
     if (noteUpdates.content !== undefined) {
       cleanUpdates.content = noteUpdates.content.trim()
     }

@@ -19,6 +19,7 @@ import {
 import { Note } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { 
   Dialog, 
@@ -32,13 +33,14 @@ import {
 interface NoteFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (noteData: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
+  onSubmit: (noteData: Omit<Note, 'created_at' | 'updated_at'> | Omit<Note, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   note?: Note | null
   taskId: string
   isLoading?: boolean
 }
 
 interface FormErrors {
+  title?: string
   content?: string
 }
 
@@ -50,6 +52,7 @@ export function NoteForm({
   taskId,
   isLoading = false
 }: NoteFormProps) {
+  const [title, setTitle] = useState(note?.title || 'Note')
   const [content, setContent] = useState(note?.content || '')
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -57,9 +60,11 @@ export function NoteForm({
   // Update form data when note changes (for edit mode)
   useEffect(() => {
     if (note) {
+      setTitle(note.title || 'Note')
       setContent(note.content || '')
     } else {
       // Reset form for create mode
+      setTitle('Note')
       setContent('')
     }
     // Clear any existing errors when switching modes/data
@@ -68,6 +73,15 @@ export function NoteForm({
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
+
+    // Title validation
+    if (!title.trim()) {
+      newErrors.title = 'Note title is required'
+    } else if (title.trim().length < 1) {
+      newErrors.title = 'Note title must be at least 1 character'
+    } else if (title.trim().length > 100) {
+      newErrors.title = 'Note title must be less than 100 characters'
+    }
 
     // Content validation
     if (!content.trim()) {
@@ -94,7 +108,10 @@ export function NoteForm({
     try {
       const noteData = {
         task_id: taskId,
-        content: content.trim()
+        title: title.trim(),
+        content: content.trim(),
+        // Include the note ID when editing
+        ...(note && { id: note.id })
       }
 
       await onSubmit(noteData)
@@ -109,9 +126,19 @@ export function NoteForm({
 
   const handleClose = () => {
     if (!isSubmitting && !isLoading) {
+      setTitle('Note')
       setContent('')
       setErrors({})
       onClose()
+    }
+  }
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    
+    // Clear error when user starts typing
+    if (errors.title) {
+      setErrors(prev => ({ ...prev, title: undefined }))
     }
   }
 
@@ -121,6 +148,105 @@ export function NoteForm({
     // Clear error when user starts typing
     if (errors.content) {
       setErrors(prev => ({ ...prev, content: undefined }))
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const textarea = e.currentTarget
+      const cursorPosition = textarea.selectionStart
+      const textBeforeCursor = content.substring(0, cursorPosition)
+      const textAfterCursor = content.substring(cursorPosition)
+      
+      // Find the current line
+      const lines = textBeforeCursor.split('\n')
+      const currentLine = lines[lines.length - 1]
+      
+      // Check if current line is a bullet point
+      const bulletMatch = currentLine.match(/^(\s*)- (.*)$/)
+      if (bulletMatch) {
+        e.preventDefault()
+        const indent = bulletMatch[1]
+        const bulletContent = bulletMatch[2]
+        
+        // If the bullet point is empty, exit the list
+        if (bulletContent.trim() === '') {
+          const newContent = textBeforeCursor.slice(0, -(currentLine.length)) + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the removed bullet point
+          setTimeout(() => {
+            textarea.setSelectionRange(cursorPosition - currentLine.length, cursorPosition - currentLine.length)
+          }, 0)
+        } else {
+          // Add new bullet point
+          const newContent = textBeforeCursor + '\n' + indent + '- ' + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the new bullet point marker
+          setTimeout(() => {
+            const newCursorPos = cursorPosition + ('\n' + indent + '- ').length
+            textarea.setSelectionRange(newCursorPos, newCursorPos)
+          }, 0)
+        }
+        return
+      }
+      
+      // Check if current line is a numbered list
+      const numberedMatch = currentLine.match(/^(\s*)(\d+)\.\s(.*)$/)
+      if (numberedMatch) {
+        e.preventDefault()
+        const indent = numberedMatch[1]
+        const currentNumber = parseInt(numberedMatch[2])
+        const listContent = numberedMatch[3]
+        
+        // If the numbered item is empty, exit the list
+        if (listContent.trim() === '') {
+          const newContent = textBeforeCursor.slice(0, -(currentLine.length)) + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the removed numbered item
+          setTimeout(() => {
+            textarea.setSelectionRange(cursorPosition - currentLine.length, cursorPosition - currentLine.length)
+          }, 0)
+        } else {
+          // Add new numbered item
+          const nextNumber = currentNumber + 1
+          const newContent = textBeforeCursor + '\n' + indent + nextNumber + '. ' + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the new numbered item marker
+          setTimeout(() => {
+            const newCursorPos = cursorPosition + ('\n' + indent + nextNumber + '. ').length
+            textarea.setSelectionRange(newCursorPos, newCursorPos)
+          }, 0)
+        }
+        return
+      }
+      
+      // Check if current line is a blockquote
+      const quoteMatch = currentLine.match(/^(\s*)>\s(.*)$/)
+      if (quoteMatch) {
+        e.preventDefault()
+        const indent = quoteMatch[1]
+        const quoteContent = quoteMatch[2]
+        
+        // If the quote is empty, exit the quote block
+        if (quoteContent.trim() === '') {
+          const newContent = textBeforeCursor.slice(0, -(currentLine.length)) + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the removed quote
+          setTimeout(() => {
+            textarea.setSelectionRange(cursorPosition - currentLine.length, cursorPosition - currentLine.length)
+          }, 0)
+        } else {
+          // Add new quote line
+          const newContent = textBeforeCursor + '\n' + indent + '> ' + textAfterCursor
+          setContent(newContent)
+          // Set cursor position after the new quote marker
+          setTimeout(() => {
+            const newCursorPos = cursorPosition + ('\n' + indent + '> ').length
+            textarea.setSelectionRange(newCursorPos, newCursorPos)
+          }, 0)
+        }
+        return
+      }
     }
   }
 
@@ -295,6 +421,30 @@ export function NoteForm({
                 </div>
               </div>
 
+              {/* Note Title */}
+              <div className="space-y-2">
+                <Label htmlFor="note-title" className="text-sm font-semibold text-gray-700">
+                  Note Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="note-title"
+                  placeholder="Enter note title..."
+                  value={title}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTitleChange(e.target.value)}
+                  disabled={isFormDisabled}
+                  className={`bg-white/70 backdrop-blur-sm border-gray-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20 transition-all duration-200 ${
+                    errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+                  }`}
+                  maxLength={100}
+                />
+                {errors.title && (
+                  <p className="text-sm text-red-600 flex items-center gap-1 animate-in slide-in-from-top-1 duration-200">
+                    <X className="size-3" />
+                    {errors.title}
+                  </p>
+                )}
+              </div>
+
               {/* Note Content */}
               <div className="space-y-2 flex-1 min-h-0 flex flex-col">
                 <Label htmlFor="note-content" className="text-sm font-semibold text-gray-700">
@@ -311,9 +461,12 @@ You can use formatting:
 - Bullet lists with -
 - Numbered lists with 1.
 - > Quotes
-- --- Dividers"
+- --- Dividers
+
+💡 Tip: Press Enter while in a list to auto-continue!"
                     value={content}
                     onChange={(e) => handleContentChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     disabled={isFormDisabled}
                     className={`h-full min-h-[200px] resize-none bg-white/70 backdrop-blur-sm border-gray-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20 transition-all duration-200 ${
                       errors.content ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''

@@ -10,6 +10,7 @@ const sampleProjects: Project[] = [
     id: '1',
     user_id: 'user1',
     name: 'Website Redesign',
+    description: 'Complete overhaul of company website with modern design',
     due_date: '2024-12-31',
     created_at: '2024-01-15T10:30:00Z',
     updated_at: '2024-01-20T14:45:00Z'
@@ -18,6 +19,7 @@ const sampleProjects: Project[] = [
     id: '2', 
     user_id: 'user1',
     name: 'Mobile App Development',
+    description: 'Native iOS and Android app development',
     due_date: '2024-12-25',
     created_at: '2024-01-10T09:00:00Z',
     updated_at: '2024-01-10T09:00:00Z'
@@ -26,6 +28,7 @@ const sampleProjects: Project[] = [
     id: '3',
     user_id: 'user1', 
     name: 'Database Migration Project',
+    description: 'Migrate legacy database to new cloud infrastructure',
     due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Due in 2 days
     created_at: '2024-01-18T16:20:00Z',
     updated_at: '2024-01-22T11:30:00Z'
@@ -34,6 +37,7 @@ const sampleProjects: Project[] = [
     id: '4',
     user_id: 'user1',
     name: 'Legacy System Overhaul',
+    description: 'Modernize and replace legacy systems with new architecture',
     due_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // Overdue by 3 days
     created_at: '2024-01-05T08:15:00Z',
     updated_at: '2024-01-15T12:00:00Z'
@@ -42,6 +46,7 @@ const sampleProjects: Project[] = [
     id: '5',
     user_id: 'user1',
     name: 'API Documentation',
+    description: 'Create comprehensive API documentation for developers',
     due_date: new Date().toISOString(), // Due today
     created_at: '2024-01-25T13:45:00Z',
     updated_at: '2024-01-25T13:45:00Z'
@@ -50,6 +55,7 @@ const sampleProjects: Project[] = [
     id: '6',
     user_id: 'user1',
     name: 'Security Audit Review',
+    description: null,
     due_date: null, // No due date
     created_at: '2024-01-20T08:30:00Z',
     updated_at: '2024-01-20T08:30:00Z'

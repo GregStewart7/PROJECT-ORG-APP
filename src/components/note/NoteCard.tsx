@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { Calendar, Edit, Trash2, ChevronDown, ChevronUp, StickyNote, Clock, User, Sparkles, AlertTriangle } from 'lucide-react'
 
@@ -43,6 +43,103 @@ export function NoteCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Simple markdown renderer for basic formatting
+  const renderMarkdown = (text: string) => {
+    const lines = text.split('\n')
+    const elements: React.ReactElement[] = []
+    let currentListItems: string[] = []
+    let currentOrderedListItems: string[] = []
+    let listKey = 0
+
+    const flushList = () => {
+      if (currentListItems.length > 0) {
+        elements.push(
+          <ul key={`ul-${listKey++}`} className="list-disc list-inside ml-4 my-2 space-y-1">
+            {currentListItems.map((item, index) => (
+              <li key={index} className="text-gray-700">
+                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
+              </li>
+            ))}
+          </ul>
+        )
+        currentListItems = []
+      }
+      if (currentOrderedListItems.length > 0) {
+        elements.push(
+          <ol key={`ol-${listKey++}`} className="list-decimal list-inside ml-4 my-2 space-y-1">
+            {currentOrderedListItems.map((item, index) => (
+              <li key={index} className="text-gray-700">
+                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
+              </li>
+            ))}
+          </ol>
+        )
+        currentOrderedListItems = []
+      }
+    }
+
+    const formatInlineMarkdown = (text: string) => {
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>')
+    }
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim()
+      
+      // Handle horizontal rules
+      if (trimmedLine === '---' || trimmedLine === '___') {
+        flushList()
+        elements.push(<hr key={`hr-${index}`} className="my-4 border-gray-300" />)
+        return
+      }
+      
+      // Handle blockquotes
+      if (trimmedLine.startsWith('> ')) {
+        flushList()
+        const quoteText = trimmedLine.slice(2)
+        elements.push(
+          <blockquote key={`quote-${index}`} className="border-l-4 border-yellow-400 pl-4 my-2 italic text-gray-600 bg-yellow-50/50 py-2 rounded-r">
+            <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(quoteText) }} />
+          </blockquote>
+        )
+        return
+      }
+      
+      // Handle unordered lists
+      if (trimmedLine.startsWith('- ')) {
+        const listItem = trimmedLine.slice(2)
+        currentListItems.push(listItem)
+        return
+      }
+      
+      // Handle ordered lists
+      const orderedListMatch = trimmedLine.match(/^(\d+)\.\s+(.*)/)
+      if (orderedListMatch) {
+        const listItem = orderedListMatch[2]
+        currentOrderedListItems.push(listItem)
+        return
+      }
+      
+      // Handle regular paragraphs
+      flushList()
+      if (trimmedLine === '') {
+        elements.push(<br key={`br-${index}`} />)
+      } else {
+        elements.push(
+          <p key={`p-${index}`} className="mb-2 last:mb-0">
+            <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line) }} />
+          </p>
+        )
+      }
+    })
+    
+    // Flush any remaining lists
+    flushList()
+    
+    return elements
+  }
 
   const handleEdit = () => {
     if (onEdit && !isLoading) {
@@ -162,7 +259,7 @@ export function NoteCard({
               
               <div className="min-w-0 flex-1">
                 <CardTitle className="text-lg font-semibold text-gray-900 mb-2">
-                  Note
+                  {note.title || 'Note'}
                 </CardTitle>
                 
                 {/* Timestamp badge */}
@@ -213,11 +310,11 @@ export function NoteCard({
             {/* Note content */}
             <div className="relative">
               <div className="prose prose-sm max-w-none text-gray-700">
-                <p className={`leading-relaxed whitespace-pre-wrap transition-all duration-300 ${
+                <div className={`leading-relaxed transition-all duration-300 ${
                   isExpanded ? 'text-gray-800' : 'text-gray-700'
                 }`}>
-                  {displayContent}
-                </p>
+                  {renderMarkdown(displayContent)}
+                </div>
               </div>
               
               {/* Fade overlay for collapsed content */}
@@ -294,10 +391,15 @@ export function NoteCard({
                 Are you sure you want to delete this note?
               </p>
               <div className="bg-yellow-50/80 border border-yellow-200/60 rounded-md p-3 mt-3">
-                <p className="text-xs text-yellow-800 line-clamp-3">
-                  {note.content.substring(0, 100)}
+                <div className="text-xs text-yellow-800 line-clamp-3">
+                  {/* Show first 100 characters with basic markdown formatting */}
+                  <span dangerouslySetInnerHTML={{ 
+                    __html: note.content.substring(0, 100)
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                  }} />
                   {note.content.length > 100 && '...'}
-                </p>
+                </div>
               </div>
             </div>
           </div>

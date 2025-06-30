@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { validateEnvironmentOrThrow, logEnvironmentStatus } from "@/lib/env-validation";
+import { DevelopmentEnvironmentValidator } from "@/components/common/EnvironmentValidator";
 import "./globals.css";
+
+// Validate environment variables at build time / startup
+if (typeof window === 'undefined') {
+  // Server-side validation
+  try {
+    validateEnvironmentOrThrow();
+    logEnvironmentStatus();
+  } catch (error) {
+    console.error('\n' + (error as Error).message + '\n');
+    process.exit(1);
+  }
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +48,8 @@ export default function RootLayout({
               {children}
             </main>
           </div>
+          {/* Environment validation (development only) */}
+          <DevelopmentEnvironmentValidator />
         </AuthProvider>
         
         {/* Global background effects */}

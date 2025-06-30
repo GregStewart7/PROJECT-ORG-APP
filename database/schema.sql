@@ -28,6 +28,7 @@ create table if not exists public.tasks (
 create table if not exists public.notes (
     id uuid default gen_random_uuid() primary key,
     task_id uuid references public.tasks(id) on delete cascade not null,
+    title text not null check (char_length(title) > 0 and char_length(title) <= 100) default 'Note',
     content text not null check (char_length(content) > 0 and char_length(content) <= 10000),
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { FolderOpen, Eye, EyeOff, AlertCircle, Crown, ArrowRight, CheckCircle2, Mail, Lock, Shield, Zap, User } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, Crown, ArrowRight, CheckCircle2, Mail, Lock, Shield, Zap, User } from "lucide-react"
 import { useRedirectIfAuthenticated } from "@/contexts/AuthContext"
 import { authValidation, signUp } from "@/lib/auth"
 import { useState } from "react"
@@ -203,7 +203,7 @@ export default function SignupPage() {
                 Check Your Email!
               </CardTitle>
               <CardDescription className="text-gray-600 text-lg">
-                We've sent a confirmation link to your email address
+                                 We&apos;ve sent a confirmation link to your email address
               </CardDescription>
             </CardHeader>
 

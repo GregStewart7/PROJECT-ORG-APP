@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, Users, TrendingUp, FileText, Target, Zap, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Plus, FolderOpen, Calendar, Clock, Users, TrendingUp, FileText, Target, Zap, CheckCircle2, AlertCircle, ArrowUpDown, Flag } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { getProject, getTasksByProject, createTask, updateTask, deleteTask } from '@/lib/database'
@@ -26,6 +26,13 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function ProjectDetailPage() {
   const { user } = useAuth()
@@ -51,6 +58,9 @@ export default function ProjectDetailPage() {
   // Animation states
   const [isVisible, setIsVisible] = useState(false)
   const [showTasks, setShowTasks] = useState(false)
+
+  // Task sorting state
+  const [taskSortBy, setTaskSortBy] = useState<string>('created-desc')
 
   useEffect(() => {
     if (user && projectId) {
@@ -196,6 +206,78 @@ export default function ProjectDetailPage() {
     setShowTaskDetail(false)
     setSelectedTask(null)
   }
+
+  const handleTaskUpdate = (updatedTask: Task) => {
+    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t))
+    setSelectedTask(updatedTask) // Update the selected task for the modal
+  }
+
+  // Task sorting function
+  const sortTasks = (tasks: Task[], sortBy: string): Task[] => {
+    const tasksCopy = [...tasks]
+    
+    switch (sortBy) {
+      case 'created-desc':
+        return tasksCopy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      case 'created-asc':
+        return tasksCopy.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      
+      case 'priority-high':
+        return tasksCopy.sort((a, b) => {
+          const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+          const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
+          if (priorityDiff !== 0) return priorityDiff
+          // Secondary sort by creation date (newest first) for same priority
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+      
+      case 'priority-low':
+        return tasksCopy.sort((a, b) => {
+          const priorityOrder = { High: 3, Medium: 2, Low: 1 }
+          const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority]
+          if (priorityDiff !== 0) return priorityDiff
+          // Secondary sort by creation date (newest first) for same priority
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+      
+      case 'due-earliest':
+        return tasksCopy.sort((a, b) => {
+          // Handle null due dates - put them at the end
+          if (!a.due_date && !b.due_date) {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          }
+          if (!a.due_date) return 1
+          if (!b.due_date) return -1
+          
+          const dateDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+          if (dateDiff !== 0) return dateDiff
+          // Secondary sort by creation date for same due date
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+      
+      case 'due-latest':
+        return tasksCopy.sort((a, b) => {
+          // Handle null due dates - put them at the end
+          if (!a.due_date && !b.due_date) {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          }
+          if (!a.due_date) return 1
+          if (!b.due_date) return -1
+          
+          const dateDiff = new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+          if (dateDiff !== 0) return dateDiff
+          // Secondary sort by creation date for same due date
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+      
+      default:
+        return tasksCopy
+    }
+  }
+
+  // Get sorted tasks
+  const sortedTasks = sortTasks(tasks, taskSortBy)
 
   // Calculate task statistics
   const completedTasks = tasks.filter(t => t.completed).length
@@ -400,19 +482,71 @@ export default function ProjectDetailPage() {
 
           {/* Tasks Section */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg shadow-sm">
-                <FileText className="size-6 text-blue-700" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg shadow-sm">
+                  <FileText className="size-6 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Tasks</h3>
+                  <p className="text-gray-600 text-sm">Track your project work and progress</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Tasks</h3>
-                <p className="text-gray-600 text-sm">Track your project work and progress</p>
-              </div>
+              
+              {/* Sort Dropdown */}
+              {tasks.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="size-4 text-gray-500" />
+                  <Select value={taskSortBy} onValueChange={setTaskSortBy}>
+                    <SelectTrigger className="w-48 bg-white/70 backdrop-blur-sm border-gray-200 hover:bg-white transition-all duration-200">
+                      <SelectValue placeholder="Sort tasks..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created-desc">
+                        <div className="flex items-center gap-2">
+                          <Clock className="size-4 text-gray-500" />
+                          <span>Newest First</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="created-asc">
+                        <div className="flex items-center gap-2">
+                          <Clock className="size-4 text-gray-500" />
+                          <span>Oldest First</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="priority-high">
+                        <div className="flex items-center gap-2">
+                          <Flag className="size-4 text-red-500" />
+                          <span>High Priority First</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="priority-low">
+                        <div className="flex items-center gap-2">
+                          <Flag className="size-4 text-green-500" />
+                          <span>Low Priority First</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="due-earliest">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="size-4 text-orange-500" />
+                          <span>Due Date (Earliest)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="due-latest">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="size-4 text-blue-500" />
+                          <span>Due Date (Latest)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {tasks.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tasks.map((task, index) => (
+                {sortedTasks.map((task, index) => (
                   <TaskCard
                     key={task.id}
                     task={task}
@@ -480,7 +614,7 @@ export default function ProjectDetailPage() {
         task={selectedTask}
         isOpen={showTaskDetail}
         onClose={closeTaskDetail}
-        onTaskUpdate={loadData}
+        onTaskUpdate={handleTaskUpdate}
       />
     </div>
   )

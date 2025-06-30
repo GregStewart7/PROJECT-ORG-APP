@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Calendar, CheckCircle2, Circle, Edit, Trash2, Clock, FileText, StickyNote, AlertCircle, AlertTriangle } from 'lucide-react'
 
@@ -48,6 +48,11 @@ export function TaskCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  
+  // Focus management refs
+  const cardRef = useRef<HTMLDivElement>(null)
+  const deleteButtonRef = useRef<HTMLButtonElement>(null)
+  const completionButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleEdit = () => {
     if (onEdit && !isLoading) {
@@ -65,6 +70,16 @@ export function TaskCard({
       try {
         await onDelete(task.id)
         setShowDeleteDialog(false)
+        
+        // Announce deletion to screen readers
+        const announcement = document.createElement('div')
+        announcement.setAttribute('aria-live', 'polite')
+        announcement.setAttribute('aria-atomic', 'true')
+        announcement.className = 'sr-only'
+        announcement.textContent = `Task "${task.name}" has been deleted successfully.`
+        document.body.appendChild(announcement)
+        
+        setTimeout(() => document.body.removeChild(announcement), 2000)
       } finally {
         setIsDeleting(false)
       }
@@ -73,6 +88,10 @@ export function TaskCard({
 
   const handleDeleteCancel = () => {
     setShowDeleteDialog(false)
+    // Return focus to delete button when dialog closes
+    setTimeout(() => {
+      deleteButtonRef.current?.focus()
+    }, 100)
   }
 
   const handleToggleComplete = async () => {
@@ -80,6 +99,16 @@ export function TaskCard({
       setIsToggling(true)
       try {
         await onToggleComplete(task.id, !task.completed)
+        
+        // Announce completion status change to screen readers
+        const announcement = document.createElement('div')
+        announcement.setAttribute('aria-live', 'polite')
+        announcement.setAttribute('aria-atomic', 'true')
+        announcement.className = 'sr-only'
+        announcement.textContent = `Task "${task.name}" marked as ${!task.completed ? 'completed' : 'incomplete'}.`
+        document.body.appendChild(announcement)
+        
+        setTimeout(() => document.body.removeChild(announcement), 2000)
       } finally {
         setIsToggling(false)
       }
@@ -89,6 +118,19 @@ export function TaskCard({
   const handleViewDetails = () => {
     if (onViewDetails && !isLoading) {
       onViewDetails(task)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Enter or Space to view task details
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === cardRef.current) {
+      e.preventDefault()
+      handleViewDetails()
+    }
+    
+    // ESC to close delete dialog
+    if (e.key === 'Escape' && showDeleteDialog) {
+      handleDeleteCancel()
     }
   }
 
@@ -105,22 +147,26 @@ export function TaskCard({
         const days = Math.abs(diffDays)
         return {
           text: `${days} days overdue`,
-          variant: 'overdue' as const
+          variant: 'overdue' as const,
+          urgency: 'high'
         }
       } else if (diffDays === 0) {
         return {
           text: 'Due today',
-          variant: 'today' as const
+          variant: 'today' as const,
+          urgency: 'high'
         }
       } else if (diffDays <= 7) {
         return {
           text: `Due in ${diffDays} days`,
-          variant: 'soon' as const
+          variant: 'soon' as const,
+          urgency: 'medium'
         }
       } else {
         return {
           text: `Due ${format(date, 'MMM d, yyyy')}`,
-          variant: 'normal' as const
+          variant: 'normal' as const,
+          urgency: 'low'
         }
       }
     } catch {
@@ -145,11 +191,11 @@ export function TaskCard({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
+      case 'High':
         return 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-      case 'medium':
+      case 'Medium':
         return 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
-      case 'low':
+      case 'Low':
         return 'bg-gradient-to-r from-green-500 to-green-600 text-white'
       default:
         return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
@@ -158,14 +204,27 @@ export function TaskCard({
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'high':
+      case 'High':
         return AlertCircle
-      case 'medium':
+      case 'Medium':
         return Clock
-      case 'low':
+      case 'Low':
         return CheckCircle2
       default:
         return Circle
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    return `${priority.charAt(0).toUpperCase() + priority.slice(1)} priority task`
+  }
+
+  const getUrgencyLabel = (urgency?: string) => {
+    switch (urgency) {
+      case 'high': return 'High urgency: '
+      case 'medium': return 'Medium urgency: '
+      case 'low': return 'Low urgency: '
+      default: return ''
     }
   }
 
@@ -174,6 +233,7 @@ export function TaskCard({
   return (
     <>
       <Card 
+        ref={cardRef}
         className={`
           h-full flex flex-col 
           transition-all duration-300 ease-out
@@ -181,88 +241,131 @@ export function TaskCard({
           animate-in fade-in slide-in-from-left-4
           bg-gradient-to-br from-white to-gray-50/30
           border-gray-200/50 backdrop-blur-sm
+          focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2
+          cursor-pointer
           ${isLoading ? 'opacity-50 pointer-events-none' : ''}
           ${task.completed ? 'bg-gradient-to-br from-green-50/50 to-green-100/30 border-green-200/60' : ''}
-          group cursor-pointer
+          group
           relative overflow-hidden
         `}
         style={{ 
           animationDelay: `${animationDelay}ms`,
           animationDuration: '600ms'
         }}
+        tabIndex={0}
+        role="article"
+        aria-labelledby={`task-title-${task.id}`}
+        aria-describedby={`task-details-${task.id}`}
+        onKeyDown={handleKeyDown}
+        onClick={handleViewDetails}
       >
-        {/* Animated background gradient on hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* Animated background gradient on hover - hidden from screen readers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true" />
         
-        {/* Priority indicator strip */}
-        <div className={`absolute left-0 top-0 w-1 h-full transition-all duration-300 ${getPriorityColor(task.priority)}`} />
+        {/* Priority indicator strip - announced via ARIA label */}
+        <div 
+          className={`absolute left-0 top-0 w-1 h-full transition-all duration-300 ${getPriorityColor(task.priority)}`} 
+          aria-label={getPriorityLabel(task.priority)}
+        />
         
         <CardHeader className="pb-3 relative z-10">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <Button
+                ref={completionButtonRef}
                 variant="ghost"
                 size="icon"
-                onClick={handleToggleComplete}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleToggleComplete()
+                }}
                 disabled={isLoading || isToggling}
-                className="size-8 p-0 hover:bg-green-50 transition-all duration-200 shrink-0 mt-0.5 group/toggle"
-                title={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
+                className="size-8 p-0 hover:bg-green-50 transition-all duration-200 shrink-0 mt-0.5 group/toggle focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                aria-label={task.completed ? `Mark task "${task.name}" as incomplete` : `Mark task "${task.name}" as complete`}
+                aria-describedby={`task-completion-status-${task.id}`}
               >
                 {isToggling ? (
-                  <div className="size-5 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                  <div 
+                    className="size-5 animate-spin rounded-full border-2 border-green-600 border-t-transparent"
+                    aria-label="Updating task completion status"
+                  />
                 ) : task.completed ? (
-                  <CheckCircle2 className="size-5 text-green-600 transition-transform duration-200 group-hover/toggle:scale-110" />
+                  <CheckCircle2 className="size-5 text-green-600 transition-transform duration-200 group-hover/toggle:scale-110" aria-hidden="true" />
                 ) : (
-                  <Circle className="size-5 text-gray-400 hover:text-green-600 transition-colors duration-200 group-hover/toggle:scale-110" />
+                  <Circle className="size-5 text-gray-400 hover:text-green-600 transition-colors duration-200 group-hover/toggle:scale-110" aria-hidden="true" />
                 )}
               </Button>
               
               <div className="min-w-0 flex-1">
                 <CardTitle 
-                  className={`text-lg font-semibold cursor-pointer hover:text-blue-600 transition-colors duration-200 ${
+                  id={`task-title-${task.id}`}
+                  className={`text-lg font-semibold transition-colors duration-200 ${
                     task.completed ? 'line-through text-gray-500' : ''
                   }`}
-                  onClick={handleViewDetails}
                   title={task.name}
                 >
                   {task.name}
                 </CardTitle>
                 
+                {/* Task completion status for screen readers */}
+                <div id={`task-completion-status-${task.id}`} className="sr-only">
+                  Task is {task.completed ? 'completed' : 'not completed'}
+                </div>
+                
                 {/* Priority badge */}
                 <div className="mt-2">
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(task.priority)} shadow-sm`}>
-                    <PriorityIcon className="size-3" />
-                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                  <div 
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(task.priority)} shadow-sm`}
+                    role="status"
+                    aria-label={getPriorityLabel(task.priority)}
+                  >
+                    <PriorityIcon className="size-3" aria-hidden="true" />
+                    <span aria-hidden="true">{task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority</span>
                   </div>
                 </div>
               </div>
             </div>
             
             {showActions && (
-              <CardAction>
+              <CardAction 
+                role="toolbar" 
+                aria-label={`Actions for task ${task.name}`}
+              >
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={handleEdit}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEdit()
+                    }}
                     disabled={isLoading}
-                    className="size-8 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 hover:scale-110"
-                    title="Edit task"
+                    className="size-8 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    aria-label={`Edit task ${task.name}`}
+                    title={`Edit task ${task.name}`}
                   >
-                    <Edit className="size-4" />
+                    <Edit className="size-4" aria-hidden="true" />
                   </Button>
                   <Button
+                    ref={deleteButtonRef}
                     variant="ghost"
                     size="icon"
-                    onClick={handleDeleteClick}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteClick()
+                    }}
                     disabled={isLoading || isDeleting}
-                    className="size-8 hover:bg-red-50 hover:text-red-600 transition-all duration-200 hover:scale-110"
-                    title="Delete task"
+                    className="size-8 hover:bg-red-50 hover:text-red-600 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    aria-label={`Delete task ${task.name}`}
+                    title={`Delete task ${task.name}`}
                   >
                     {isDeleting ? (
-                      <div className="size-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                      <div 
+                        className="size-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"
+                        aria-label="Deleting task"
+                      />
                     ) : (
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-4" aria-hidden="true" />
                     )}
                   </Button>
                 </div>
@@ -272,28 +375,47 @@ export function TaskCard({
         </CardHeader>
 
         <CardContent className="py-0 flex-1 relative z-10">
-          <div className="space-y-3 text-sm text-gray-600">
+          <div 
+            id={`task-details-${task.id}`}
+            className="space-y-3 text-sm text-gray-600"
+            role="group"
+            aria-label="Task details"
+          >
             <div className="flex items-center gap-2 transition-colors duration-300 group-hover:text-gray-700">
-              <Calendar className="size-4" />
-              <span>Created {format(new Date(task.created_at), 'MMM d, yyyy')}</span>
+              <Calendar className="size-4" aria-hidden="true" />
+              <span>
+                <span className="sr-only">Created on </span>
+                Created {format(new Date(task.created_at), 'MMM d, yyyy')}
+              </span>
             </div>
             
             {task.updated_at !== task.created_at && (
               <div className="flex items-center gap-2 transition-colors duration-300 group-hover:text-gray-700">
-                <Edit className="size-4" />
-                <span>Updated {format(new Date(task.updated_at), 'MMM d, yyyy')}</span>
+                <Edit className="size-4" aria-hidden="true" />
+                <span>
+                  <span className="sr-only">Last updated on </span>
+                  Updated {format(new Date(task.updated_at), 'MMM d, yyyy')}
+                </span>
               </div>
             )}
 
             {/* Due Date badge */}
             <div className="flex items-center">
               {dueDateInfo ? (
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all duration-300 hover:shadow-md ${getDueDateColor(dueDateInfo.variant)}`}>
-                  <Clock className="size-3" />
-                  <span className="font-semibold">{dueDateInfo.text}</span>
+                <div 
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all duration-300 hover:shadow-md ${getDueDateColor(dueDateInfo.variant)}`}
+                  role="status"
+                  aria-label={`${getUrgencyLabel(dueDateInfo.urgency)}${dueDateInfo.text}`}
+                >
+                  <Clock className="size-3" aria-hidden="true" />
+                  <span className="font-semibold" aria-hidden="true">{dueDateInfo.text}</span>
                 </div>
               ) : (
-                <div className="text-xs text-gray-400 transition-colors duration-300 group-hover:text-gray-500">
+                <div 
+                  className="text-xs text-gray-400 transition-colors duration-300 group-hover:text-gray-500"
+                  role="status"
+                  aria-label="No due date set for this task"
+                >
                   No due date set
                 </div>
               )}
@@ -304,29 +426,39 @@ export function TaskCard({
         <CardFooter className="pt-4 mt-auto relative z-10">
           <div className="flex gap-2 w-full">
             <Button
-              onClick={handleViewDetails}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleViewDetails()
+              }}
               disabled={isLoading}
               variant="outline"
-              className="flex-1 transition-all duration-300 hover:scale-105 bg-white/70 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 group/btn"
+              className="flex-1 transition-all duration-300 hover:scale-105 bg-white/70 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 group/btn focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               size="sm"
+              aria-label={`View notes for task ${task.name}`}
             >
-              <StickyNote className="size-4 mr-2 transition-transform duration-300 group-hover/btn:scale-110" />
-              View Notes
+              <StickyNote className="size-4 mr-2 transition-transform duration-300 group-hover/btn:scale-110" aria-hidden="true" />
+              <span>View Notes</span>
             </Button>
           </div>
         </CardFooter>
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50">
+      <Dialog 
+        open={showDeleteDialog} 
+        onOpenChange={(open) => !open && handleDeleteCancel()}
+      >
+        <DialogContent 
+          className="sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50"
+          aria-describedby="delete-dialog-description"
+        >
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-red-100 to-red-200 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-red-100 to-red-200 flex items-center justify-center" aria-hidden="true">
+                <AlertTriangle className="w-5 h-5 text-red-600" aria-hidden="true" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold text-gray-900">
+                <DialogTitle className="text-lg font-semibold text-gray-900" id="delete-dialog-title">
                   Delete Task
                 </DialogTitle>
                 <DialogDescription className="text-sm text-gray-500 mt-1">
@@ -338,7 +470,10 @@ export function TaskCard({
           
           <div className="py-4">
             <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-lg p-4 border border-gray-200/50">
-              <p className="text-sm text-gray-700 mb-2">
+              <p 
+                className="text-sm text-gray-700 mb-2"
+                id="delete-dialog-description"
+              >
                 Are you sure you want to delete <span className="font-semibold text-gray-900">"{task.name}"</span>?
               </p>
               <p className="text-xs text-gray-500">
@@ -352,7 +487,8 @@ export function TaskCard({
               variant="outline"
               onClick={handleDeleteCancel}
               disabled={isDeleting}
-              className="flex-1 bg-white/70 backdrop-blur-sm hover:bg-gray-50 border-gray-200"
+              className="flex-1 bg-white/70 backdrop-blur-sm hover:bg-gray-50 border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500/50"
+              aria-label="Cancel task deletion"
             >
               Cancel
             </Button>
@@ -360,21 +496,29 @@ export function TaskCard({
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={isDeleting}
-              className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg transition-all duration-200"
+              className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              aria-label={`Confirm deletion of task ${task.name}`}
+              aria-describedby="delete-task-status"
             >
               {isDeleting ? (
                 <>
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  Deleting...
+                  <div 
+                    className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2"
+                    aria-hidden="true"
+                  />
+                  <span>Deleting...</span>
                 </>
               ) : (
                 <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Task
+                  <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" />
+                  <span>Delete Task</span>
                 </>
               )}
             </Button>
           </DialogFooter>
+          <div id="delete-task-status" className="sr-only" aria-live="polite">
+            {isDeleting ? 'Deleting task, please wait' : ''}
+          </div>
         </DialogContent>
       </Dialog>
     </>
